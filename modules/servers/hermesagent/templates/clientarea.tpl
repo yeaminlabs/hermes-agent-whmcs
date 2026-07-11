@@ -13,14 +13,14 @@
     
     .hermes-container {
         font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background: #0d0e12;
+        background: #ffffff;
         border-radius: 12px;
         padding: 35px;
-        color: #f3f4f6;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        color: #111827;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
         margin: 20px 0;
         position: relative;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid #e5e7eb;
     }
 
     .hermes-container::before {
@@ -39,6 +39,8 @@
         margin-bottom: 30px;
         flex-wrap: wrap;
         gap: 15px;
+        border-bottom: 1px solid #f3f4f6;
+        padding-bottom: 20px;
     }
 
     .hermes-logo-area {
@@ -53,13 +55,12 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        filter: drop-shadow(0 0 10px rgba(225, 29, 72, 0.4));
     }
 
     .hermes-logo-icon {
         width: 100%;
         height: 100%;
-        background: linear-gradient(135deg, #f43f5e 0%, #ffffff 100%);
+        background: #e11d48;
         -webkit-mask: url(https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/hermesagent.png) no-repeat center / contain;
         mask: url(https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/hermesagent.png) no-repeat center / contain;
     }
@@ -68,12 +69,12 @@
         font-size: 24px;
         font-weight: 700;
         margin: 0;
-        color: #ffffff;
+        color: #111827;
     }
 
     .hermes-subtitle {
         font-size: 13px;
-        color: #9ca3af;
+        color: #6b7280;
         margin: 4px 0 0 0;
     }
     
@@ -96,21 +97,23 @@
     }
 
     .status-active {
-        background-color: rgba(16, 185, 129, 0.1);
-        border: 1px solid rgba(16, 185, 129, 0.2);
-        color: #34d399;
+        background-color: #111827;
+        color: #ffffff;
+    }
+    
+    .status-active .status-dot {
+        color: #10b981;
     }
 
     .status-pending {
-        background-color: rgba(245, 158, 11, 0.1);
-        border: 1px solid rgba(245, 158, 11, 0.2);
-        color: #fbbf24;
+        background-color: #f3f4f6;
+        color: #4b5563;
     }
 
     .status-suspended {
-        background-color: rgba(239, 68, 68, 0.1);
-        border: 1px solid rgba(239, 68, 68, 0.2);
-        color: #f87171;
+        background-color: #fef2f2;
+        border: 1px solid #fecaca;
+        color: #ef4444;
     }
 
     .status-dot {
@@ -142,8 +145,8 @@
     }
 
     .hermes-card {
-        background: #15161b;
-        border: 1px solid rgba(255, 255, 255, 0.03);
+        background: #fafafa;
+        border: 1px solid #e5e7eb;
         border-radius: 12px;
         padding: 24px;
         position: relative;
@@ -151,8 +154,8 @@
 
     .card-title {
         font-size: 15px;
-        font-weight: 600;
-        color: #ffffff;
+        font-weight: 700;
+        color: #111827;
         margin-top: 0;
         margin-bottom: 20px;
         display: flex;
@@ -161,7 +164,7 @@
     }
 
     .card-title i {
-        color: #818cf8;
+        color: #111827;
         font-size: 16px;
     }
 
@@ -170,12 +173,17 @@
         justify-content: space-between;
         align-items: center;
         padding: 12px 0;
+        border-bottom: 1px solid #f3f4f6;
+    }
+    
+    .info-row:last-child {
+        border-bottom: none;
     }
 
     .info-label {
         font-size: 13px;
-        color: #9ca3af;
-        font-weight: 400;
+        color: #6b7280;
+        font-weight: 500;
     }
 
     .info-value-container {
@@ -186,23 +194,24 @@
 
     .code-val {
         font-family: 'Fira Code', 'Courier New', monospace;
-        background: rgba(255, 255, 255, 0.04);
+        background: #ffffff;
         padding: 6px 12px;
         border-radius: 6px;
-        border: 1px solid rgba(255, 255, 255, 0.05);
+        border: 1px solid #d1d5db;
         font-size: 13px;
-        color: #e5e7eb;
+        color: #111827;
         display: inline-block;
+        font-weight: 500;
     }
     
     .code-val.url-val {
-        color: #818cf8;
+        color: #e11d48;
     }
 
     .btn-icon-only {
         background: none;
         border: none;
-        color: #9ca3af;
+        color: #6b7280;
         cursor: pointer;
         padding: 6px;
         border-radius: 6px;
@@ -213,8 +222,8 @@
     }
 
     .btn-icon-only:hover {
-        color: #ffffff;
-        background: rgba(255, 255, 255, 0.1);
+        color: #111827;
+        background: #e5e7eb;
     }
 
     .hermes-btn-primary {
@@ -240,7 +249,7 @@
     }
     
     .hermes-btn-purple {
-        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        background: #111827;
         color: white;
         border: none;
         border-radius: 8px;
@@ -253,19 +262,20 @@
         gap: 8px;
         transition: all 0.2s ease;
         text-decoration: none;
-        box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
     }
     
     .hermes-btn-purple:hover {
-        opacity: 0.9;
+        background: #000000;
         color: white;
         text-decoration: none;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
     }
 
     /* Step-by-Step pairing box */
     .pairing-box {
-        background: #15161b;
-        border: 1px solid rgba(255, 255, 255, 0.03);
+        background: #fafafa;
+        border: 1px solid #e5e7eb;
         border-radius: 12px;
         padding: 24px;
         margin-top: 0;
@@ -273,8 +283,8 @@
 
     .pairing-title {
         font-size: 15px;
-        font-weight: 600;
-        color: #a5b4fc;
+        font-weight: 700;
+        color: #111827;
         margin-top: 0;
         margin-bottom: 20px;
         display: flex;
@@ -284,42 +294,36 @@
     
     .pairing-title i {
         font-size: 16px;
+        color: #111827;
     }
 
     .step-list {
-        list-style-type: none;
-        padding-left: 0;
+        list-style: none;
+        padding: 0;
         margin: 0;
     }
 
     .step-item {
-        position: relative;
-        padding-left: 30px;
-        margin-bottom: 12px;
-        font-size: 13.5px;
-        line-height: 1.5;
-        color: #d1d5db;
-    }
-
-    .step-item:last-child {
-        margin-bottom: 0;
+        display: flex;
+        gap: 15px;
+        margin-bottom: 16px;
+        font-size: 13px;
+        color: #4b5563;
+        line-height: 1.6;
     }
 
     .step-number {
-        position: absolute;
-        left: 0;
-        top: 2px;
-        width: 20px;
-        height: 20px;
-        background: rgba(99, 102, 241, 0.15);
-        border: 1px solid rgba(99, 102, 241, 0.3);
+        width: 24px;
+        height: 24px;
         border-radius: 50%;
+        background: #f43f5e;
+        color: white;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 11px;
         font-weight: 700;
-        color: #a5b4fc;
+        font-size: 12px;
+        flex-shrink: 0;
     }
 
     .clipboard-toast {

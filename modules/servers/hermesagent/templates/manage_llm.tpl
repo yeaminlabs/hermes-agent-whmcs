@@ -2,55 +2,57 @@
 <style>
     .hermes-container {
         font-family: 'Outfit', sans-serif;
-        background: radial-gradient(120% 120% at 50% 0%, #151821 0%, #0d0e12 100%);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 16px;
-        padding: 30px;
-        color: #f3f4f6;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+        background: #ffffff;
+        border-radius: 12px;
+        padding: 35px;
+        color: #111827;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
         margin: 20px 0;
         position: relative;
+        border: 1px solid #e5e7eb;
     }
     .hermes-container::before {
-        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-        background: linear-gradient(90deg, #e11d48, #f43f5e, #fda4af);
+        content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+        background: linear-gradient(90deg, #e11d48, #f43f5e, #ec4899);
+        border-top-left-radius: 12px;
+        border-top-right-radius: 12px;
     }
     .snbd-title {
         font-size: 24px; font-weight: 700; margin: 0 0 5px 0;
-        color: #fff; display: flex; align-items: center; gap: 10px;
+        color: #111827; display: flex; align-items: center; gap: 10px;
     }
-    .snbd-title i { color: #f43f5e; }
-    .snbd-subtitle { font-size: 14px; color: #9ca3af; margin-bottom: 25px; }
+    .snbd-title i { color: #111827; }
+    .snbd-subtitle { font-size: 14px; color: #6b7280; margin-bottom: 25px; }
     
     .form-group { margin-bottom: 20px; }
-    .form-label { display: block; font-size: 14px; font-weight: 500; margin-bottom: 8px; color: #d1d5db; }
+    .form-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #4b5563; }
     .form-control-custom {
         width: 100%; padding: 12px 15px; border-radius: 8px;
-        background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.1);
-        color: #fff; font-family: monospace; font-size: 14px; transition: all 0.2s;
+        background: #ffffff; border: 1px solid #d1d5db;
+        color: #111827; font-family: 'Fira Code', 'Courier New', monospace; font-size: 14px; transition: all 0.2s;
         box-sizing: border-box;
     }
     .form-control-custom:focus {
-        outline: none; border-color: #f43f5e; box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.2);
+        outline: none; border-color: #f43f5e; box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15);
     }
     .btn-submit {
-        background: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%); color: white;
+        background: #f43f5e; color: white;
         border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer;
-        font-size: 15px; box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4); transition: all 0.2s;
+        font-size: 15px; transition: all 0.2s;
         display: inline-flex; align-items: center; gap: 8px;
     }
-    .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(225, 29, 72, 0.6); color: white; text-decoration: none; }
+    .btn-submit:hover { background: #e11d48; color: white; text-decoration: none; }
     .btn-back {
-        background: rgba(255, 255, 255, 0.05); color: #d1d5db; border: 1px solid rgba(255,255,255,0.1);
+        background: #ffffff; color: #4b5563; border: 1px solid #d1d5db;
         padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer;
         text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;
     }
-    .btn-back:hover { background: rgba(255, 255, 255, 0.1); color: #fff; text-decoration: none; }
+    .btn-back:hover { background: #f3f4f6; color: #111827; text-decoration: none; }
     .btn-container { display: flex; gap: 15px; margin-top: 30px; }
-    .alert-success-custom { background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #34d399; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    .alert-error-custom { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    .card-section { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 25px; margin-bottom: 20px; }
-    .section-title { font-size: 16px; font-weight: 600; color: #fff; margin-top: 0; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; }
+    .alert-success-custom { background: #ecfdf5; border: 1px solid #a7f3d0; color: #065f46; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .alert-error-custom { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    .card-section { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin-bottom: 20px; }
+    .section-title { font-size: 16px; font-weight: 700; color: #111827; margin-top: 0; margin-bottom: 15px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid #e5e7eb; padding-bottom: 10px; }
 </style>
 
 <div class="hermes-container">
