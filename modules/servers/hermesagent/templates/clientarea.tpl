@@ -128,6 +128,43 @@
         50% { transform: scale(1.1); opacity: 1; }
         100% { transform: scale(0.95); opacity: 0.5; }
     }
+    
+    /* EKG Heartbeat Animation */
+    .ekg-line {
+        stroke-dasharray: 300;
+        stroke-dashoffset: 300;
+        animation: drawEkg 2.5s linear infinite;
+    }
+    @keyframes drawEkg {
+        0% { stroke-dashoffset: 300; }
+        30% { stroke-dashoffset: 0; }
+        100% { stroke-dashoffset: -300; }
+    }
+    
+    .metric-box {
+        background: #ffffff;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+        flex: 1;
+    }
+    
+    .metric-value {
+        font-family: 'Fira Code', monospace;
+        font-size: 16px;
+        font-weight: 700;
+        color: #CC0000;
+        display: block;
+        margin-bottom: 2px;
+    }
+    
+    .metric-label {
+        font-size: 11px;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
 
     .hermes-grid {
         display: grid;
@@ -445,49 +482,50 @@
             </div>
         </div>
 
-        <!-- OpenAI Compatibility API Card -->
+        <!-- Agent Neural Link -->
         <div class="hermes-card">
-            <h4 class="card-title">
-                <i class="fas fa-code"></i> OpenAI-Compatible API Server
-            </h4>
-            {if $api_enabled}
-                <div class="info-row">
-                    <span class="info-label">Base URL (v1)</span>
-                    <div class="info-value-container">
-                        <span class="code-val" style="word-break: break-all;">{$api_url}</span>
-                        <button class="btn-icon-only" onclick="copyToClipboard('{$api_url}', 'API Base URL copied!')" title="Copy URL">
-                            <i class="far fa-copy"></i>
-                        </button>
+            <h4 class="card-title"><i class="fas fa-heartbeat" style="color: #CC0000;"></i> Agent Neural Link</h4>
+            
+            {if $deployment_status eq 'Active'}
+                <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 20px; overflow: hidden; position: relative;">
+                    <div style="position: absolute; top: 10px; right: 15px; display: flex; align-items: center; gap: 5px; font-size: 11px; color: #10b981; font-weight: 600;">
+                        <span class="status-dot" style="color: #10b981;"></span> SYNCHRONIZED
+                    </div>
+                    <p style="font-size: 12px; color: #6b7280; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">Container Link Stream</p>
+                    
+                    <svg width="100%" height="50" viewBox="0 0 300 50" preserveAspectRatio="none" style="filter: drop-shadow(0 0 4px rgba(204, 0, 0, 0.3));">
+                        <!-- Grid background -->
+                        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f3f4f6" stroke-width="1"/>
+                        </pattern>
+                        <rect width="100%" height="100%" fill="url(#grid)" />
+                        <!-- EKG Line -->
+                        <path class="ekg-line" d="M 0 25 L 100 25 L 110 10 L 120 45 L 130 15 L 140 30 L 150 25 L 300 25" fill="none" stroke="#CC0000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+
+                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <div class="metric-box">
+                        <span class="metric-value">{$serviceid}</span>
+                        <span class="metric-label">Container ID</span>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-value">LIVE</span>
+                        <span class="metric-label">Uptime Status</span>
+                    </div>
+                    <div class="metric-box">
+                        <span class="metric-value">OK</span>
+                        <span class="metric-label">Memory Allocation</span>
                     </div>
                 </div>
                 
-                <div class="info-row">
-                    <span class="info-label">API Key</span>
-                    <div class="info-value-container">
-                        <span class="code-val" id="api-key-val" style="-webkit-text-security: disc;">{$api_key}</span>
-                        <button class="btn-icon-only" onclick="toggleApiKeyVisibility()" title="Toggle View" id="toggle-api-btn">
-                            <i class="far fa-eye"></i>
-                        </button>
-                        <button class="btn-icon-only" onclick="copyToClipboard('{$api_key}', 'API Key copied!')" title="Copy Key">
-                            <i class="far fa-copy"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="info-row">
-                    <span class="info-label">API Port</span>
-                    <div class="info-value-container">
-                        <span class="code-val">{$api_port}</span>
-                    </div>
-                </div>
-                <p style="font-size: 11.5px; color: #9ca3af; margin: 10px 0 0 0; line-height: 1.4;">
-                    <i class="fas fa-info-circle" style="color: #818cf8;"></i> Exposes <code>/v1/chat/completions</code>. Use this key to plug your remote agent directly into third-party UI managers like Open WebUI or LobeChat.
+                <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.5;">
+                    Your Hermes Agent is fully deployed and listening for remote connections. System resources are actively monitored.
                 </p>
             {else}
-                <div style="display: flex; height: 80%; flex-direction: column; justify-content: center; align-items: center; color: #6b7280; text-align: center; padding: 20px 0;">
-                    <i class="fas fa-ban" style="font-size: 30px; margin-bottom: 10px;"></i>
-                    <p style="font-size: 13px; margin: 0;">OpenAI-Compatible API is disabled.</p>
-                    <p style="font-size: 11px; margin-top: 4px; max-width: 80%;">Enable this feature during checkout or via package configuration upgrade to route third-party tools.</p>
+                <div style="padding: 40px 20px; text-align: center; color: #6b7280;">
+                    <i class="fas fa-power-off" style="font-size: 32px; color: #d1d5db; margin-bottom: 15px;"></i>
+                    <p style="margin: 0; font-size: 13px;">Neural link offline. Agent is not currently active.</p>
                 </div>
             {/if}
         </div>

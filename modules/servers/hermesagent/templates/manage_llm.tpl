@@ -137,6 +137,28 @@
             </div>
         </div>
 
+        {if $api_enabled}
+        <div class="card-section" style="background: #ffffff; border-color: #CC0000; border-left: 4px solid #CC0000;">
+            <h3 class="section-title" style="border-bottom: none; margin-bottom: 5px;"><i class="fas fa-code-branch" style="color: #CC0000;"></i> Connect to Your Agent's API</h3>
+            <p style="font-size: 13px; color: #6b7280; margin-bottom: 20px;">Use these credentials to connect third-party apps (like LobeChat or Open WebUI) directly to your Hermes Agent.</p>
+            
+            <div class="form-group">
+                <label class="form-label">Agent API Base URL (v1)</label>
+                <input type="text" class="form-control-custom" value="{$api_url}" readonly onclick="this.select()">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Agent API Key</label>
+                <input type="text" class="form-control-custom" value="{$api_key}" readonly onclick="this.select()">
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label">Agent API Port</label>
+                <input type="text" class="form-control-custom" value="{$api_port}" readonly>
+            </div>
+        </div>
+        {/if}
+
         <div class="btn-container">
             <button type="submit" class="btn-submit"><i class="fas fa-save"></i> Save & Restart Agent</button>
             <a href="clientarea.php?action=productdetails&id={$serviceid}" class="btn-back"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
