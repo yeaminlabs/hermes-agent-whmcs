@@ -287,6 +287,16 @@ function hermesagent_addon_setup_config_options($productId) {
  * Output admin UI for the addon module.
  */
 function hermesagent_output($vars) {
+    // Automatically fix 'required' flag for optional fields across all products
+    try {
+        Capsule::table('tblcustomfields')
+            ->where('type', 'product')
+            ->whereIn('fieldname', ['Bot Token', 'Custom Endpoint URL'])
+            ->update(['required' => '']);
+    } catch (\Exception $e) {
+        // ignore
+    }
+
     // 1. Handle One-Click config submit
     $message = '';
     if (isset($_POST['configure_product'])) {
