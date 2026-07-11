@@ -449,29 +449,16 @@ YAML;
         // Inject SNBD HOST branding into the compiled web dashboard
         $brandingHtml = <<<HTML
 <style>
-  .snbd-topbar { position: fixed; top: 0; left: 0; right: 0; background: #CC0000; color: white; text-align: center; padding: 8px; font-family: 'Inter', system-ui, sans-serif; font-size: 12.5px; font-weight: 600; z-index: 999998; box-shadow: 0 2px 10px rgba(0,0,0,0.1); letter-spacing: 0.5px; }
-  body { padding-top: 34px !important; }
-  .snbd-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); z-index: 999999; display: flex; align-items: flex-end; justify-content: center; backdrop-filter: blur(3px); }
-  
-  .snbd-cookie-banner { background: #ffffff; color: #111827; padding: 25px 30px; width: 100%; border-top-left-radius: 16px; border-top-right-radius: 16px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; gap: 15px; align-items: center; text-align: center; border-top: 3px solid #CC0000; animation: slideUp 0.4s ease-out; }
-  @media (min-width: 768px) { .snbd-cookie-banner { flex-direction: row; text-align: left; justify-content: space-between; padding: 25px 40px; } }
-  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-  
-  .snbd-cookie-banner div h2 { margin: 0 0 8px 0; color: #CC0000; font-size: 17px; font-weight: 700; }
-  .snbd-cookie-banner div p { margin: 0; font-size: 13.5px; line-height: 1.5; color: #4b5563; max-width: 800px; }
-  
-  .snbd-btn { background: #CC0000; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(204, 0, 0, 0.2); white-space: nowrap; flex-shrink: 0; }
-  .snbd-btn:hover { background: #aa0000; transform: translateY(-1px); }
+  .snbd-topbar { position: fixed; top: 0; left: 0; right: 0; background: #CC0000; color: white; text-align: center; padding: 10px 40px 10px 20px; font-family: 'Inter', system-ui, sans-serif; font-size: 13px; font-weight: 500; z-index: 999998; box-shadow: 0 2px 10px rgba(0,0,0,0.15); line-height: 1.4; }
+  .snbd-topbar strong { font-weight: 700; background: rgba(0,0,0,0.15); padding: 3px 8px; border-radius: 4px; margin-right: 8px; }
+  .snbd-topbar-close { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: white; font-size: 20px; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; padding: 0 5px; }
+  .snbd-topbar-close:hover { opacity: 1; }
+  body { padding-top: 40px !important; }
 </style>
-<div class=\"snbd-topbar\">SNBD HOST Beta Program — Thanks for Participating!</div>
-<div class=\"snbd-overlay\" id=\"snbd-consent-modal\">
-  <div class=\"snbd-cookie-banner\">
-    <div>
-        <h2>Terms of Service & Beta Consent</h2>
-        <p>By using the SNBD HOST Beta Program, you consent to our data collection practices and the display of promotional content necessary to support this free tier. Promotional features will be relocated in future paid plans.</p>
-    </div>
-    <button class=\"snbd-btn\" onclick=\"document.getElementById('snbd-consent-modal').style.display='none'\">I Understand</button>
-  </div>
+<div class=\"snbd-topbar\" id=\"snbd-topbar\">
+  <strong>SNBD HOST Beta Program</strong>
+  This free tier includes promotional content and data collection necessary to support the beta. These will be relocated in future paid plans.
+  <button class=\"snbd-topbar-close\" onclick=\"document.getElementById('snbd-topbar').style.display='none'\" title=\"Dismiss\">&times;</button>
 </div>
 HTML;
         
