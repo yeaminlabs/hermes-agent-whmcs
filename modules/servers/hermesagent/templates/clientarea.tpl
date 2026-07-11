@@ -51,18 +51,21 @@
         gap: 12px;
     }
 
-    .hermes-logo-icon {
-        width: 40px;
-        height: 40px;
-        background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
-        border-radius: 10px;
+    .hermes-logo-wrapper {
+        width: 45px;
+        height: 45px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
-        font-size: 20px;
-        color: white;
-        box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+        filter: drop-shadow(0 0 8px rgba(225, 29, 72, 0.5));
+    }
+
+    .hermes-logo-icon {
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #f43f5e 0%, #ffffff 100%);
+        -webkit-mask: url(https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/hermesagent.png) no-repeat center / contain;
+        mask: url(https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/hermesagent.png) no-repeat center / contain;
     }
 
     .hermes-title {
@@ -327,7 +330,9 @@
 <div class="hermes-container">
     <div class="hermes-header">
         <div class="hermes-logo-area">
-            <div class="hermes-logo-icon">H</div>
+            <div class="hermes-logo-wrapper">
+                <div class="hermes-logo-icon"></div>
+            </div>
             <div>
                 <h3 class="hermes-title">Hermes Cloud Agent</h3>
                 <p class="hermes-subtitle">Managed dockerized deployment by SNBD Host</p>
