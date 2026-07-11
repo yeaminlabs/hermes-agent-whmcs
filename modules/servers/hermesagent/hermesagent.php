@@ -446,6 +446,36 @@ YAML;
   -p \"{$bindIp}:{$apiPort}:8642\" \\
   nousresearch/hermes-agent:{$dockerImageTag} gateway run\n";
         
+        // Inject SNBD HOST branding into the compiled web dashboard
+        $brandingHtml = <<<HTML
+<style>
+  .snbd-branding {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: rgba(15, 23, 42, 0.9);
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    z-index: 999999;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.1);
+    pointer-events: none;
+    letter-spacing: 0.5px;
+  }
+  .snbd-branding span { color: #e11d48; font-weight: 700; }
+</style>
+<div class=\"snbd-branding\">⚡ Powered by <span>SNBD HOST</span></div>
+HTML;
+        
+        $setupCmds .= "sleep 3\n"; // wait a moment for container filesystem to be ready
+        $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"sed -i 's/<title>Hermes Agent - Dashboard<\/title>/<title>SNBD HOST Hermes<\/title>/g' /opt/hermes/hermes_cli/web_dist/index.html\"\n";
+        $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"cat << 'BRANDING_EOF' >> /opt/hermes/hermes_cli/web_dist/index.html\n{$brandingHtml}\nBRANDING_EOF\"\n";
+        
         // Add Reverse Proxy config if Caddy is present and secure is active
         $hostname = "hermes.deltadns.xyz";
         $caddyConfig = <<<CADDY
