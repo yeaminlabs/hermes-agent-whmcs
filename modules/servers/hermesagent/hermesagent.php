@@ -460,6 +460,9 @@ CADDY;
         $setupCmds .= "if which caddy >/dev/null 2>&1; then\n";
         $setupCmds .= "  mkdir -p /etc/caddy/conf.d\n";
         $setupCmds .= "  cat << 'EOF' > \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n{$caddyConfig}\nEOF\n";
+        $setupCmds .= "  if ! grep -q \"import conf.d/\*.conf\" /etc/caddy/Caddyfile; then\n";
+        $setupCmds .= "    echo \"import conf.d/*.conf\" >> /etc/caddy/Caddyfile\n";
+        $setupCmds .= "  fi\n";
         $setupCmds .= "  systemctl reload caddy || caddy reload --config /etc/caddy/Caddyfile || true\n";
         $setupCmds .= "fi\n";
         
