@@ -469,7 +469,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 </style>
 <div class=\"snbd-topbar\" id=\"snbd-topbar\">
   <strong>SNBD HOST Beta Program</strong>
-  This free tier includes promotional content and data collection necessary to support the beta. These will be relocated in future paid plans.
+  This is a free tier for our beta — still in active development. As part of helping us build and improve it, we collect usage tracking data that shows us how the service is performing.
   <button class=\"snbd-topbar-close\" onclick=\"document.getElementById('snbd-topbar').style.display='none'\" title=\"Dismiss\">&times;</button>
 </div>
 HTML;
