@@ -506,7 +506,7 @@ function hermesagent_output($vars) {
                                 <select name="product_id" class="form-control" style="height:40px; border-radius:6px;">
                                     <?php foreach ($products as $p): ?>
                                         <option value="<?php echo $p->id; ?>"><?php echo htmlspecialchars($p->name); ?> (ID: <?php echo $p->id; ?>)</option>
-                                    <?php endselect; ?>
+                                    <?php endforeach; ?>
                                 </select>
                             </div>
                             <button type="submit" name="configure_product" class="btn-ha-primary" style="width:100%;">
