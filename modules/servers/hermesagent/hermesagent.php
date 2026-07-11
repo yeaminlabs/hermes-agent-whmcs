@@ -440,6 +440,7 @@ YAML;
   --name \"hermes-{$serviceid}\" \\
   --restart unless-stopped \\
   --cpus=\"{$cpus}\" --memory=\"{$memory}\" \\
+  --env-file \"{$dataDir}/.env\" \\
   -v \"{$dataDir}:/opt/data\" \\
   -p \"{$bindIp}:{$dashPort}:9119\" \\
   -p \"{$bindIp}:{$apiPort}:8642\" \\
