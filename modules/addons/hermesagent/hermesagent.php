@@ -73,7 +73,7 @@ function hermesagent_deactivate() {
 /**
  * Helper to check and insert custom field for product.
  */
-function hermesagent_addon_create_custom_field($productId, $name, $type, $desc, $showOrder = true) {
+function hermesagent_addon_create_custom_field($productId, $name, $type, $desc, $showOrder = true, $required = true) {
     $exists = Capsule::table('tblcustomfields')
         ->where('type', 'product')
         ->where('relid', $productId)
@@ -90,7 +90,7 @@ function hermesagent_addon_create_custom_field($productId, $name, $type, $desc, 
             'fieldoptions' => '',
             'regexpr' => '',
             'adminonly' => '',
-            'required' => 'on',
+            'required' => $required ? 'on' : '',
             'showorder' => $showOrder ? 'on' : '',
             'showinvoice' => '',
             'sortorder' => 0
@@ -128,6 +128,52 @@ function hermesagent_addon_setup_config_options($productId) {
         ]);
     }
     
+    // Fetch OpenRouter Models dynamically
+    $openRouterModels = [];
+    try {
+        $ch = curl_init('https://openrouter.ai/api/v1/models');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        $response = curl_exec($ch);
+        curl_close($ch);
+        
+        if ($response) {
+            $data = json_decode($response, true);
+            if (isset($data['data']) && is_array($data['data'])) {
+                foreach ($data['data'] as $model) {
+                    $id = $model['id'];
+                    $name = $model['name'];
+                    
+                    // Check if free
+                    $isFree = false;
+                    if (isset($model['pricing']) && isset($model['pricing']['prompt']) && isset($model['pricing']['completion'])) {
+                        if (floatval($model['pricing']['prompt']) == 0 && floatval($model['pricing']['completion']) == 0) {
+                            $isFree = true;
+                        }
+                    }
+                    
+                    if ($isFree) {
+                        $name .= ' (Free)';
+                    }
+                    
+                    $openRouterModels[] = $id . '|' . $name;
+                }
+            }
+        }
+    } catch (\Exception $e) {
+        // Ignore errors and fallback
+    }
+    
+    $modelSubs = [
+        'hermes-4-405b|Hermes 4 405B (Default)',
+        'gpt-4o|GPT-4o',
+        'claude-3-5-sonnet|Claude 3.5 Sonnet'
+    ];
+    
+    if (!empty($openRouterModels)) {
+        $modelSubs = array_merge($modelSubs, $openRouterModels);
+    }
+
     // 2. Define Options
     $options = [
         [
@@ -161,11 +207,7 @@ function hermesagent_addon_setup_config_options($productId) {
         [
             'name' => 'Model',
             'type' => 1, // Dropdown
-            'subs' => [
-                'hermes-4-405b|Hermes 4 405B (Default)',
-                'gpt-4o|GPT-4o',
-                'claude-3-5-sonnet|Claude 3.5 Sonnet'
-            ]
+            'subs' => $modelSubs
         ],
         [
             'name' => 'Messaging Platform',
@@ -246,10 +288,10 @@ function hermesagent_output($vars) {
         if ($pid > 0) {
             try {
                 // Add Custom fields
-                hermesagent_addon_create_custom_field($pid, 'Provider API Key', 'password', 'API key/token for the selected inference provider (client-supplied, stored encrypted).');
-                hermesagent_addon_create_custom_field($pid, 'Dashboard Username', 'text', 'Login username for the Hermes web dashboard / Desktop Remote Gateway.');
-                hermesagent_addon_create_custom_field($pid, 'Bot Token', 'password', 'Bot token for the selected messaging platform (leave blank if None).');
-                hermesagent_addon_create_custom_field($pid, 'Custom Endpoint URL', 'text', 'Only used when Custom OpenAI-compatible endpoint is selected.');
+                hermesagent_addon_create_custom_field($pid, 'Provider API Key', 'password', 'API key/token for the selected inference provider (client-supplied, stored encrypted).', true, true);
+                hermesagent_addon_create_custom_field($pid, 'Dashboard Username', 'text', 'Login username for the Hermes web dashboard / Desktop Remote Gateway.', true, true);
+                hermesagent_addon_create_custom_field($pid, 'Bot Token', 'password', 'Bot token for the selected messaging platform (leave blank if None).', true, false);
+                hermesagent_addon_create_custom_field($pid, 'Custom Endpoint URL', 'text', 'Only used when Custom OpenAI-compatible endpoint is selected.', true, false);
                 
                 // Add Config options
                 hermesagent_addon_setup_config_options($pid);
