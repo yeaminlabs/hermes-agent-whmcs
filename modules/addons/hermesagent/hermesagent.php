@@ -74,13 +74,13 @@ function hermesagent_deactivate() {
  * Helper to check and insert custom field for product.
  */
 function hermesagent_addon_create_custom_field($productId, $name, $type, $desc, $showOrder = true, $required = true) {
-    $exists = Capsule::table('tblcustomfields')
+    $field = Capsule::table('tblcustomfields')
         ->where('type', 'product')
         ->where('relid', $productId)
         ->where('fieldname', $name)
-        ->exists();
+        ->first();
         
-    if (!$exists) {
+    if (!$field) {
         Capsule::table('tblcustomfields')->insert([
             'type' => 'product',
             'relid' => $productId,
@@ -95,6 +95,12 @@ function hermesagent_addon_create_custom_field($productId, $name, $type, $desc, 
             'showinvoice' => '',
             'sortorder' => 0
         ]);
+    } else {
+        Capsule::table('tblcustomfields')
+            ->where('id', $field->id)
+            ->update([
+                'required' => $required ? 'on' : ''
+            ]);
     }
 }
 
