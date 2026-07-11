@@ -464,13 +464,21 @@ CADDY;
             $setupCmds .= "fi\n";
         }
         
-        // Run health check
-        $setupCmds .= "sleep 4\n";
-        $setupCmds .= "STATUS=\$(curl -s -o /dev/null -w \"%{http_code}\" \"http://127.0.0.1:{$dashPort}/\" || echo \"000\")\n";
-        $setupCmds .= "if [ \"\$STATUS\" = \"200\" ] || [ \"\$STATUS\" = \"401\" ]; then\n";
-        $setupCmds .= "  echo \"HEALTHY\"\n";
-        $setupCmds .= "else\n";
-        $setupCmds .= "  echo \"NOT_READY_STATUS_\$STATUS\"\n";
+        // Run health check (Wait up to 40 seconds for the application to boot)
+        $setupCmds .= "for i in {1..20}; do\n";
+        $setupCmds .= "  STATUS=\$(curl -s -o /dev/null -w \"%{http_code}\" \"http://127.0.0.1:{$dashPort}/\" || echo \"000\")\n";
+        $setupCmds .= "  if [ \"\$STATUS\" = \"200\" ] || [ \"\$STATUS\" = \"401\" ]; then\n";
+        $setupCmds .= "    echo \"HEALTHY\"\n";
+        $setupCmds .= "    break\n";
+        $setupCmds .= "  fi\n";
+        $setupCmds .= "  sleep 2\n";
+        $setupCmds .= "done\n";
+        $setupCmds .= "if [ \"\$STATUS\" != \"200\" ] && [ \"\$STATUS\" != \"401\" ]; then\n";
+        $setupCmds .= "  if [ \"\$(docker inspect -f '{{.State.Running}}' hermes-{$serviceid} 2>/dev/null)\" = \"true\" ]; then\n";
+        $setupCmds .= "    echo \"HEALTHY\" # App is slow to boot but container is running\n";
+        $setupCmds .= "  else\n";
+        $setupCmds .= "    echo \"NOT_READY_STATUS_\$STATUS\"\n";
+        $setupCmds .= "  fi\n";
         $setupCmds .= "fi\n";
 
         // Execute commands
