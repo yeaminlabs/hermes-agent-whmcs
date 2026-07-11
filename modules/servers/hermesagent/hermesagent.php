@@ -446,36 +446,36 @@ YAML;
   nousresearch/hermes-agent:{$dockerImageTag} gateway run\n";
         
         // Add Reverse Proxy config if Caddy is present and secure is active
-        if ($isSecure && !empty($params['serverhostname'])) {
-            $hostname = $params['serverhostname'];
-            $caddyConfig = <<<CADDY
+        $hostname = "hermes.deltadns.xyz";
+        $caddyConfig = <<<CADDY
 hermes-{$serviceid}.{$hostname} {
     reverse_proxy 127.0.0.1:{$dashPort}
 }
 CADDY;
-            if ($apiEnabledVal) {
-                $caddyConfig .= "\nhermes-api-{$serviceid}.{$hostname} {\n    reverse_proxy 127.0.0.1:{$apiPort}\n}";
-            }
-            
-            $setupCmds .= "if which caddy >/dev/null 2>&1; then\n";
-            $setupCmds .= "  mkdir -p /etc/caddy/conf.d\n";
-            $setupCmds .= "  cat << 'EOF' > \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n{$caddyConfig}\nEOF\n";
-            $setupCmds .= "  systemctl reload caddy || caddy reload --config /etc/caddy/Caddyfile || true\n";
-            $setupCmds .= "fi\n";
+        if ($apiEnabledVal) {
+            $caddyConfig .= "\nhermes-api-{$serviceid}.{$hostname} {\n    reverse_proxy 127.0.0.1:{$apiPort}\n}";
         }
         
+        $setupCmds .= "if which caddy >/dev/null 2>&1; then\n";
+        $setupCmds .= "  mkdir -p /etc/caddy/conf.d\n";
+        $setupCmds .= "  cat << 'EOF' > \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n{$caddyConfig}\nEOF\n";
+        $setupCmds .= "  systemctl reload caddy || caddy reload --config /etc/caddy/Caddyfile || true\n";
+        $setupCmds .= "fi\n";
+        
         // Run health check (Wait up to 40 seconds for the application to boot)
-        $setupCmds .= "for i in {1..20}; do\n";
+        $setupCmds .= "i=0\n";
+        $setupCmds .= "while [ \$i -lt 20 ]; do\n";
         $setupCmds .= "  STATUS=\$(curl -s -o /dev/null -w \"%{http_code}\" \"http://127.0.0.1:{$dashPort}/\" || echo \"000\")\n";
         $setupCmds .= "  if [ \"\$STATUS\" = \"200\" ] || [ \"\$STATUS\" = \"401\" ]; then\n";
         $setupCmds .= "    echo \"HEALTHY\"\n";
         $setupCmds .= "    break\n";
         $setupCmds .= "  fi\n";
         $setupCmds .= "  sleep 2\n";
+        $setupCmds .= "  i=\$((i+1))\n";
         $setupCmds .= "done\n";
         $setupCmds .= "if [ \"\$STATUS\" != \"200\" ] && [ \"\$STATUS\" != \"401\" ]; then\n";
         $setupCmds .= "  if [ \"\$(docker inspect -f '{{.State.Running}}' hermes-{$serviceid} 2>/dev/null)\" = \"true\" ]; then\n";
-        $setupCmds .= "    echo \"HEALTHY\" # App is slow to boot but container is running\n";
+        $setupCmds .= "    echo \"HEALTHY\"\n";
         $setupCmds .= "  else\n";
         $setupCmds .= "    echo \"NOT_READY_STATUS_\$STATUS\"\n";
         $setupCmds .= "  fi\n";
@@ -829,9 +829,9 @@ function hermesagent_ClientArea($params) {
     $dashboardUrl = '';
     $apiUrl = '';
     
-    if ($isSecure && !empty($serverHostname)) {
-        $dashboardUrl = "https://hermes-{$serviceid}.{$serverHostname}";
-        $apiUrl = "https://hermes-api-{$serviceid}.{$serverHostname}/v1";
+    if ($isSecure) {
+        $dashboardUrl = "https://hermes-{$serviceid}.hermes.deltadns.xyz";
+        $apiUrl = "https://hermes-api-{$serviceid}.hermes.deltadns.xyz/v1";
     } else {
         $dashboardUrl = "http://{$host}:{$record->dash_port}";
         $apiUrl = "http://{$host}:{$record->api_port}/v1";

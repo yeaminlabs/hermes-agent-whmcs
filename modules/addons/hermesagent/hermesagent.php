@@ -607,8 +607,8 @@ function hermesagent_output($vars) {
                                     
                                     // Resolve dashboard URL
                                     $dashUrl = '';
-                                    if ($d->server_secure && !empty($d->server_hostname)) {
-                                        $dashUrl = "https://hermes-{$d->serviceid}.{$d->server_hostname}";
+                                    if ($d->server_secure) {
+                                        $dashUrl = "https://hermes-{$d->serviceid}.hermes.deltadns.xyz";
                                     } else {
                                         $dashUrl = "http://{$d->server_ip}:{$d->dash_port}";
                                     }
