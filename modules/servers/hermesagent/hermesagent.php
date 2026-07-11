@@ -475,8 +475,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 HTML;
         
         $setupCmds .= "sleep 3\n"; // wait a moment for container filesystem to be ready
-        $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"sed -i 's/<title>Hermes Agent - Dashboard<\/title>/<title>{$dashboardUsername} Hermes Agent<\/title>/g' /opt/hermes/hermes_cli/web_dist/index.html\"\n";
-        $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"cat << 'BRANDING_EOF' >> /opt/hermes/hermes_cli/web_dist/index.html\n{$brandingHtml}\nBRANDING_EOF\"\n";
+        $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"sed -i 's/<title>Hermes Agent - Dashboard<\\/title>/<title>{$dashboardUsername} Hermes Agent<\\/title>/g' /opt/hermes/hermes_cli/web_dist/index.html\"\n";
+        
+        // Write branding to host first to avoid escaping issues, then pipe to container
+        $setupCmds .= "cat << 'BRANDING_EOF' > \"{$dataDir}/branding.html\"\n{$brandingHtml}\nBRANDING_EOF\n";
+        $setupCmds .= "docker exec -i \"hermes-{$serviceid}\" sh -c \"cat >> /opt/hermes/hermes_cli/web_dist/index.html\" < \"{$dataDir}/branding.html\"\n";
         
         // Add Reverse Proxy config if Caddy is present and secure is active
         $hostname = "hermes.deltadns.xyz";
