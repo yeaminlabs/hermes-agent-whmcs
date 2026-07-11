@@ -328,10 +328,13 @@
         </div>
         <div>
             {if $deployment_status eq 'Active'}
-                <span class="status-badge status-active">
+                <span class="status-badge status-active" style="margin-right: 15px;">
                     <span class="status-dot"></span>
                     Running
                 </span>
+                <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=manage_llm" class="hermes-btn-primary" style="background: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%);">
+                    <i class="fas fa-microchip"></i> Manage LLM Providers
+                </a>
             {elseif $deployment_status eq 'Suspended'}
                 <span class="status-badge status-suspended">
                     Suspended

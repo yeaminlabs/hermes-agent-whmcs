@@ -705,6 +705,7 @@ function hermesagent_ChangePackage($params) {
  */
 function hermesagent_ClientAreaCustomButtonArray() {
     return [
+        'Manage LLM Providers' => 'manage_llm',
         'Restart Agent' => 'restart',
         'View Logs' => 'viewlogs',
         'Regenerate Password' => 'regenpassword',
@@ -811,6 +812,140 @@ function hermesagent_healthcheck($params) {
         return nl2br(htmlspecialchars($message));
     } catch (\Exception $e) {
         return "SSH Connection failed: " . $e->getMessage();
+    }
+}
+
+/**
+ * Custom action: Manage LLM Providers
+ */
+function hermesagent_manage_llm($params) {
+    $serviceid = intval($params['serviceid']);
+    
+    // Default values if we can't parse them
+    $vars = [
+        'active_model' => '',
+        'openrouter_key' => '',
+        'openai_key' => '',
+        'anthropic_key' => '',
+        'nous_key' => '',
+        'custom_url' => '',
+        'custom_key' => '',
+        'serviceid' => $serviceid,
+        'success' => isset($_GET['success']) ? true : false,
+        'error' => ''
+    ];
+    
+    try {
+        $ssh = hermesagent_get_ssh_client($params);
+        $dataDir = "/srv/hermes/{$serviceid}/data";
+        
+        // Read .env
+        $envData = $ssh->exec("cat \"{$dataDir}/.env\" 2>/dev/null || echo ''");
+        if ($envData) {
+            $lines = explode("\n", $envData);
+            foreach ($lines as $line) {
+                if (strpos($line, '=') !== false && strpos(trim($line), '#') !== 0) {
+                    list($key, $val) = explode('=', $line, 2);
+                    $key = trim($key);
+                    $val = trim($val);
+                    if ($key === 'OPENROUTER_API_KEY') $vars['openrouter_key'] = $val;
+                    if ($key === 'OPENAI_API_KEY') $vars['openai_key'] = $val; // Might be custom key too, we'll disambiguate later
+                    if ($key === 'ANTHROPIC_API_KEY') $vars['anthropic_key'] = $val;
+                    if ($key === 'NOUS_PORTAL_API_KEY') $vars['nous_key'] = $val;
+                    if ($key === 'OPENAI_API_BASE') $vars['custom_url'] = $val;
+                }
+            }
+        }
+        
+        // Disambiguate OpenAI key vs Custom endpoint key
+        if (!empty($vars['custom_url']) && !empty($vars['openai_key'])) {
+            $vars['custom_key'] = $vars['openai_key'];
+            $vars['openai_key'] = ''; // It was used for custom
+        }
+        
+        // Read config.yaml
+        $yamlData = $ssh->exec("cat \"{$dataDir}/config.yaml\" 2>/dev/null || echo ''");
+        if ($yamlData) {
+            preg_match('/^model:\s*"?([^"\n\r]+)"?/m', $yamlData, $matches);
+            if (!empty($matches[1])) {
+                $vars['active_model'] = $matches[1];
+            }
+        }
+    } catch (\Exception $e) {
+        $vars['error'] = "Could not fetch live configuration: " . $e->getMessage();
+    }
+    
+    return [
+        'templatefile' => 'templates/manage_llm',
+        'vars' => $vars
+    ];
+}
+
+/**
+ * Custom action: Update LLM Providers (POST handler)
+ */
+function hermesagent_update_llm($params) {
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+        header("Location: clientarea.php?action=productdetails&id=" . intval($params['serviceid']) . "&modop=custom&a=manage_llm");
+        exit;
+    }
+    
+    $serviceid = intval($params['serviceid']);
+    $model = trim($_POST['active_model'] ?? '');
+    
+    // Build new keys array
+    $keysToUpdate = [];
+    if (!empty($_POST['openrouter_key'])) $keysToUpdate['OPENROUTER_API_KEY'] = trim($_POST['openrouter_key']);
+    if (!empty($_POST['openai_key'])) $keysToUpdate['OPENAI_API_KEY'] = trim($_POST['openai_key']);
+    if (!empty($_POST['anthropic_key'])) $keysToUpdate['ANTHROPIC_API_KEY'] = trim($_POST['anthropic_key']);
+    if (!empty($_POST['nous_key'])) $keysToUpdate['NOUS_PORTAL_API_KEY'] = trim($_POST['nous_key']);
+    
+    if (!empty($_POST['custom_url'])) {
+        $keysToUpdate['OPENAI_API_BASE'] = trim($_POST['custom_url']);
+        if (!empty($_POST['custom_key'])) {
+            $keysToUpdate['OPENAI_API_KEY'] = trim($_POST['custom_key']); // Overrides standard openai if both submitted
+        }
+    }
+    
+    try {
+        $ssh = hermesagent_get_ssh_client($params);
+        $dataDir = "/srv/hermes/{$serviceid}/data";
+        
+        $cmd = "";
+        
+        // 1. Update config.yaml for the model
+        if (!empty($model)) {
+            // Escape slashes for sed
+            $escModel = str_replace('/', '\/', $model);
+            $cmd .= "sed -i 's/^model:.*/model: \"{$escModel}\"/' \"{$dataDir}/config.yaml\"\n";
+        }
+        
+        // 2. Update .env for each key
+        // We will remove existing occurrences of these keys, then append them
+        $allPossibleKeys = ['OPENROUTER_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'NOUS_PORTAL_API_KEY', 'OPENAI_API_BASE'];
+        foreach ($allPossibleKeys as $k) {
+            $cmd .= "sed -i '/^{$k}=/d' \"{$dataDir}/.env\"\n";
+        }
+        foreach ($keysToUpdate as $k => $v) {
+            // Escape value safely
+            $safeV = escapeshellarg($v);
+            $cmd .= "echo \"{$k}={$safeV}\" >> \"{$dataDir}/.env\"\n";
+        }
+        
+        // 3. Restart container to apply
+        $cmd .= "docker restart \"hermes-{$serviceid}\"\n";
+        
+        $ssh->exec($cmd);
+        logModuleCall('hermesagent', 'update_llm', $cmd, 'Success');
+        
+        header("Location: clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=manage_llm&success=1");
+        exit;
+        
+    } catch (\Exception $e) {
+        logModuleCall('hermesagent', 'update_llm', 'Failed', $e->getMessage());
+        // Simple error redirect
+        header("Location: clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=manage_llm&error=1");
+        exit;
     }
 }
 
