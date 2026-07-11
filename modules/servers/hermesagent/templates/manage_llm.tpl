@@ -77,20 +77,49 @@
         <div class="card-section">
             <h3 class="section-title"><i class="fas fa-key" style="color: #f43f5e;"></i> API Keys (Add as many as you want)</h3>
             <div class="form-group">
-                <label class="form-label">OpenRouter API Key</label>
+                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    OpenRouter API Key
+                </label>
                 <input type="password" name="openrouter_key" class="form-control-custom" value="{$openrouter_key}" placeholder="sk-or-v1-...">
             </div>
             <div class="form-group">
-                <label class="form-label">OpenAI API Key</label>
+                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg>
+                    OpenAI API Key
+                </label>
                 <input type="password" name="openai_key" class="form-control-custom" value="{$openai_key}" placeholder="sk-...">
             </div>
             <div class="form-group">
-                <label class="form-label">Anthropic API Key</label>
+                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+                    Anthropic API Key
+                </label>
                 <input type="password" name="anthropic_key" class="form-control-custom" value="{$anthropic_key}" placeholder="sk-ant-...">
             </div>
             <div class="form-group">
-                <label class="form-label">Nous Portal API Key</label>
+                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                    Nous Portal API Key
+                </label>
                 <input type="password" name="nous_key" class="form-control-custom" value="{$nous_key}" placeholder="...">
+            </div>
+        </div>
+        
+        <div class="card-section">
+            <h3 class="section-title"><i class="fab fa-telegram-plane" style="color: #f43f5e;"></i> Messaging Channels</h3>
+            <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fab fa-telegram" style="color: #0088cc; font-size: 16px;"></i> Telegram Bot Token
+                </label>
+                <input type="password" name="telegram_token" class="form-control-custom" value="{$telegram_token}" placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ">
+                <small style="color: #9ca3af; display: block; margin-top: 5px;">Get this from BotFather on Telegram to allow your agent to talk via Telegram.</small>
+            </div>
+            <div class="form-group">
+                <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fab fa-discord" style="color: #5865F2; font-size: 16px;"></i> Discord Bot Token
+                </label>
+                <input type="password" name="discord_token" class="form-control-custom" value="{$discord_token}" placeholder="MTEyMzQ1Njc4OTA.abcDEF.1234567890abcdef">
             </div>
         </div>
         

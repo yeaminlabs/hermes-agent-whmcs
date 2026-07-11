@@ -473,7 +473,7 @@ YAML;
 HTML;
         
         $setupCmds .= "sleep 3\n"; // wait a moment for container filesystem to be ready
-        $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"sed -i 's/<title>Hermes Agent - Dashboard<\/title>/<title>SNBD HOST Hermes<\/title>/g' /opt/hermes/hermes_cli/web_dist/index.html\"\n";
+        $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"sed -i 's/<title>Hermes Agent - Dashboard<\/title>/<title>{$dashboardUsername} Hermes Agent<\/title>/g' /opt/hermes/hermes_cli/web_dist/index.html\"\n";
         $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"cat << 'BRANDING_EOF' >> /opt/hermes/hermes_cli/web_dist/index.html\n{$brandingHtml}\nBRANDING_EOF\"\n";
         
         // Add Reverse Proxy config if Caddy is present and secure is active
@@ -830,6 +830,8 @@ function hermesagent_manage_llm($params) {
         'nous_key' => '',
         'custom_url' => '',
         'custom_key' => '',
+        'telegram_token' => '',
+        'discord_token' => '',
         'serviceid' => $serviceid,
         'success' => isset($_GET['success']) ? true : false,
         'error' => ''
@@ -853,6 +855,8 @@ function hermesagent_manage_llm($params) {
                     if ($key === 'ANTHROPIC_API_KEY') $vars['anthropic_key'] = $val;
                     if ($key === 'NOUS_PORTAL_API_KEY') $vars['nous_key'] = $val;
                     if ($key === 'OPENAI_API_BASE') $vars['custom_url'] = $val;
+                    if ($key === 'TELEGRAM_BOT_TOKEN') $vars['telegram_token'] = $val;
+                    if ($key === 'DISCORD_BOT_TOKEN') $vars['discord_token'] = $val;
                 }
             }
         }
@@ -899,6 +903,8 @@ function hermesagent_update_llm($params) {
     if (!empty($_POST['openai_key'])) $keysToUpdate['OPENAI_API_KEY'] = trim($_POST['openai_key']);
     if (!empty($_POST['anthropic_key'])) $keysToUpdate['ANTHROPIC_API_KEY'] = trim($_POST['anthropic_key']);
     if (!empty($_POST['nous_key'])) $keysToUpdate['NOUS_PORTAL_API_KEY'] = trim($_POST['nous_key']);
+    if (!empty($_POST['telegram_token'])) $keysToUpdate['TELEGRAM_BOT_TOKEN'] = trim($_POST['telegram_token']);
+    if (!empty($_POST['discord_token'])) $keysToUpdate['DISCORD_BOT_TOKEN'] = trim($_POST['discord_token']);
     
     if (!empty($_POST['custom_url'])) {
         $keysToUpdate['OPENAI_API_BASE'] = trim($_POST['custom_url']);
@@ -922,7 +928,7 @@ function hermesagent_update_llm($params) {
         
         // 2. Update .env for each key
         // We will remove existing occurrences of these keys, then append them
-        $allPossibleKeys = ['OPENROUTER_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'NOUS_PORTAL_API_KEY', 'OPENAI_API_BASE'];
+        $allPossibleKeys = ['OPENROUTER_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'NOUS_PORTAL_API_KEY', 'OPENAI_API_BASE', 'TELEGRAM_BOT_TOKEN', 'DISCORD_BOT_TOKEN'];
         foreach ($allPossibleKeys as $k) {
             $cmd .= "sed -i '/^{$k}=/d' \"{$dataDir}/.env\"\n";
         }
