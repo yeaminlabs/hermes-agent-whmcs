@@ -4,6 +4,13 @@
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
 
 <style>
+    /* Aggressively hide default WHMCS theme elements that clutter the page */
+    div[id="cPanelConnect"], 
+    .cpanel-feature,
+    .panel-cpanel {
+        display: none !important;
+    }
+    
     .hermes-container {
         font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         background: radial-gradient(120% 120% at 50% 0%, #151821 0%, #0d0e12 100%);
@@ -541,4 +548,38 @@
             btn.innerHTML = '<i class="far fa-eye"></i>';
         }
     }
+
+    // Modern SaaS Overhaul: Remove WHMCS Default Clutter
+    document.addEventListener("DOMContentLoaded", function() {
+        // 1. Move our beautiful Hermes container to the very top of the tab content
+        const hermesContainer = document.querySelector('.hermes-container');
+        const tabContent = hermesContainer.closest('.tab-pane') || hermesContainer.closest('.product-details') || hermesContainer.closest('.card-body') || document.querySelector('#Primary_Sidebar')?.parentElement;
+        
+        if (hermesContainer && tabContent) {
+            tabContent.insertBefore(hermesContainer, tabContent.firstChild);
+        }
+
+        // 2. Hide all the bulky default WHMCS panels (Service Overview, cPanel, Additional Info)
+        const allCards = document.querySelectorAll('.card, .panel, .box, .mb-4, .row');
+        allCards.forEach(card => {
+            // Don't hide our own container!
+            if (card.classList.contains('hermes-container') || card.closest('.hermes-container')) return;
+            
+            const text = card.innerText.toLowerCase();
+            if (
+                text.includes('cpanel') || 
+                text.includes('service overview') || 
+                text.includes('additional information') ||
+                text.includes('registration date')
+            ) {
+                card.style.display = 'none';
+            }
+        });
+        
+        // 3. Specifically target images with cpanel logos just in case
+        document.querySelectorAll('img[src*="cpanel"]').forEach(img => {
+            const wrapper = img.closest('.card') || img.closest('.panel') || img.closest('.row');
+            if (wrapper) wrapper.style.display = 'none';
+        });
+    });
 </script>
