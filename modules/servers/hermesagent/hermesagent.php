@@ -449,27 +449,23 @@ YAML;
         // Inject SNBD HOST branding into the compiled web dashboard
         $brandingHtml = <<<HTML
 <style>
-  .snbd-branding {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background: rgba(15, 23, 42, 0.9);
-    color: #fff;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-family: 'Inter', system-ui, sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    z-index: 999999;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(4px);
-    border: 1px solid rgba(255,255,255,0.1);
-    pointer-events: none;
-    letter-spacing: 0.5px;
-  }
-  .snbd-branding span { color: #e11d48; font-weight: 700; }
+  .snbd-topbar { position: fixed; top: 0; left: 0; right: 0; background: #CC0000; color: white; text-align: center; padding: 8px; font-family: 'Inter', system-ui, sans-serif; font-size: 12.5px; font-weight: 600; z-index: 999998; box-shadow: 0 2px 10px rgba(0,0,0,0.1); letter-spacing: 0.5px; }
+  body { padding-top: 34px !important; }
+  .snbd-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(17, 24, 39, 0.85); z-index: 999999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(6px); }
+  .snbd-modal { background: #ffffff; color: #111827; padding: 35px 30px; border-radius: 16px; max-width: 400px; text-align: center; font-family: 'Inter', system-ui, sans-serif; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 1px solid #e5e7eb; }
+  .snbd-modal h2 { margin: 0 0 15px 0; color: #CC0000; font-size: 20px; font-weight: 700; }
+  .snbd-modal p { font-size: 14.5px; line-height: 1.6; margin-bottom: 25px; color: #4b5563; }
+  .snbd-btn { background: #CC0000; color: white; border: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(204, 0, 0, 0.2); }
+  .snbd-btn:hover { background: #aa0000; transform: translateY(-1px); }
 </style>
-<div class=\"snbd-branding\">⚡ Powered by <span>SNBD HOST</span></div>
+<div class=\"snbd-topbar\">SNBD HOST Beta Program — Thanks for Participating!</div>
+<div class=\"snbd-overlay\" id=\"snbd-consent-modal\">
+  <div class=\"snbd-modal\">
+    <h2>SNBD HOST Beta Program</h2>
+    <p>This free beta program includes this advertisement which will be removed in future paid plans.<br><br>Thank you for understanding!</p>
+    <button class=\"snbd-btn\" onclick=\"document.getElementById('snbd-consent-modal').style.display='none'\">I Understand</button>
+  </div>
+</div>
 HTML;
         
         $setupCmds .= "sleep 3\n"; // wait a moment for container filesystem to be ready
