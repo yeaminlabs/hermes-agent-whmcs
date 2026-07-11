@@ -564,6 +564,19 @@
         </ul>
     </div>
 
+    <!-- Data Management -->
+    <div class="pairing-box" style="margin-top: 20px;">
+        <h4 class="pairing-title">
+            <i class="fas fa-database"></i> Data Management
+        </h4>
+        <p style="font-size: 13px; color: #4b5563; margin-bottom: 15px; line-height: 1.5;">
+            Download a complete snapshot of your agent's brain. This backup contains all long-term memories, chat history, custom skills, and environment configurations in a highly compressed `.tar.gz` format.
+        </p>
+        <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=downloadbackup" class="hermes-btn-primary" style="background: #10b981;">
+            <i class="fas fa-download"></i> Download Agent Brain
+        </a>
+    </div>
+
     <!-- Danger Zone -->
     <div class="pairing-box" style="margin-top: 20px; border-color: #fca5a5; background: #fef2f2;">
         <h4 class="pairing-title" style="color: #ef4444;">

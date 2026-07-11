@@ -714,6 +714,7 @@ function hermesagent_ClientAreaCustomButtonArray() {
         'Restart Agent' => 'restart',
         'View Logs' => 'viewlogs',
         'Regenerate Password' => 'regenpassword',
+        'Download Agent Brain' => 'downloadbackup',
         'Kill Switch' => 'killswitch',
     ];
 }
@@ -779,6 +780,45 @@ function hermesagent_regenpassword($params) {
         return "Dashboard Password regenerated successfully! New Password: " . $newPass;
     }
     return "Failed to regenerate password: " . $res;
+}
+
+/**
+ * Custom action: Download Agent Brain Backup
+ */
+function hermesagent_downloadbackup($params) {
+    $serviceid = intval($params['serviceid']);
+    try {
+        $ssh = hermesagent_get_ssh_client($params);
+        
+        $tmpFile = "/tmp/hermes_brain_{$serviceid}_" . time() . ".tar.gz";
+        $dataDir = "/srv/hermes/{$serviceid}/data";
+        
+        // Check if data directory exists
+        $check = trim($ssh->exec("if [ -d \"{$dataDir}\" ]; then echo 'EXISTS'; else echo 'NOT_FOUND'; fi"));
+        if ($check !== 'EXISTS') {
+            return "Agent data directory not found on host.";
+        }
+        
+        // Compress the directory and base64 encode it so it can safely cross the SSH output stream
+        $cmd = "tar -czf \"{$tmpFile}\" -C \"/srv/hermes/{$serviceid}\" data && base64 \"{$tmpFile}\" && rm -f \"{$tmpFile}\"";
+        $b64 = $ssh->exec($cmd);
+        
+        $binary = base64_decode(trim($b64));
+        if (empty($binary)) {
+            return "Failed to generate or download the backup archive.";
+        }
+        
+        // Force file download in browser
+        ob_clean();
+        header('Content-Description: File Transfer');
+        header('Content-Type: application/x-gzip');
+        header('Content-Disposition: attachment; filename="hermes_brain_'.$serviceid.'_'.date('Ymd').'.tar.gz"');
+        header('Content-Length: ' . strlen($binary));
+        echo $binary;
+        exit;
+    } catch (\Exception $e) {
+        return "Backup failed: " . $e->getMessage();
+    }
 }
 
 /**
