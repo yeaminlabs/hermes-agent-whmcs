@@ -451,18 +451,25 @@ YAML;
 <style>
   .snbd-topbar { position: fixed; top: 0; left: 0; right: 0; background: #CC0000; color: white; text-align: center; padding: 8px; font-family: 'Inter', system-ui, sans-serif; font-size: 12.5px; font-weight: 600; z-index: 999998; box-shadow: 0 2px 10px rgba(0,0,0,0.1); letter-spacing: 0.5px; }
   body { padding-top: 34px !important; }
-  .snbd-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(17, 24, 39, 0.85); z-index: 999999; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(6px); }
-  .snbd-modal { background: #ffffff; color: #111827; padding: 35px 30px; border-radius: 16px; max-width: 400px; text-align: center; font-family: 'Inter', system-ui, sans-serif; box-shadow: 0 20px 40px rgba(0,0,0,0.4); border: 1px solid #e5e7eb; }
-  .snbd-modal h2 { margin: 0 0 15px 0; color: #CC0000; font-size: 20px; font-weight: 700; }
-  .snbd-modal p { font-size: 14.5px; line-height: 1.6; margin-bottom: 25px; color: #4b5563; }
-  .snbd-btn { background: #CC0000; color: white; border: none; padding: 12px 28px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(204, 0, 0, 0.2); }
+  .snbd-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.4); z-index: 999999; display: flex; align-items: flex-end; justify-content: center; backdrop-filter: blur(3px); }
+  
+  .snbd-cookie-banner { background: #ffffff; color: #111827; padding: 25px 30px; width: 100%; border-top-left-radius: 16px; border-top-right-radius: 16px; box-shadow: 0 -10px 40px rgba(0,0,0,0.2); font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; gap: 15px; align-items: center; text-align: center; border-top: 3px solid #CC0000; animation: slideUp 0.4s ease-out; }
+  @media (min-width: 768px) { .snbd-cookie-banner { flex-direction: row; text-align: left; justify-content: space-between; padding: 25px 40px; } }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  
+  .snbd-cookie-banner div h2 { margin: 0 0 8px 0; color: #CC0000; font-size: 17px; font-weight: 700; }
+  .snbd-cookie-banner div p { margin: 0; font-size: 13.5px; line-height: 1.5; color: #4b5563; max-width: 800px; }
+  
+  .snbd-btn { background: #CC0000; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 6px rgba(204, 0, 0, 0.2); white-space: nowrap; flex-shrink: 0; }
   .snbd-btn:hover { background: #aa0000; transform: translateY(-1px); }
 </style>
 <div class=\"snbd-topbar\">SNBD HOST Beta Program — Thanks for Participating!</div>
 <div class=\"snbd-overlay\" id=\"snbd-consent-modal\">
-  <div class=\"snbd-modal\">
-    <h2>SNBD HOST Beta Program</h2>
-    <p>This free beta program includes this advertisement which will be removed in future paid plans.<br><br>Thank you for understanding!</p>
+  <div class=\"snbd-cookie-banner\">
+    <div>
+        <h2>Terms of Service & Beta Consent</h2>
+        <p>By using the SNBD HOST Beta Program, you consent to our data collection practices and the display of promotional content necessary to support this free tier. Promotional features will be relocated in future paid plans.</p>
+    </div>
     <button class=\"snbd-btn\" onclick=\"document.getElementById('snbd-consent-modal').style.display='none'\">I Understand</button>
   </div>
 </div>
