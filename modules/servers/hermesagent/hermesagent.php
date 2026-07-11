@@ -446,8 +446,20 @@ YAML;
   -p \"{$bindIp}:{$apiPort}:8642\" \\
   nousresearch/hermes-agent:{$dockerImageTag} gateway run\n";
         
-        // Inject SNBD HOST branding into the compiled web dashboard
+        // Inject SNBD HOST branding and GTM into the compiled web dashboard
         $brandingHtml = <<<HTML
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-N675SJK');</script>
+<!-- End Google Tag Manager -->
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-N675SJK"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
 <style>
   .snbd-topbar { position: fixed; top: 0; left: 0; right: 0; background: #CC0000; color: white; text-align: center; padding: 10px 40px 10px 20px; font-family: 'Inter', system-ui, sans-serif; font-size: 13px; font-weight: 500; z-index: 999998; box-shadow: 0 2px 10px rgba(0,0,0,0.15); line-height: 1.4; }
   .snbd-topbar strong { font-weight: 700; background: rgba(0,0,0,0.15); padding: 3px 8px; border-radius: 4px; margin-right: 8px; }
