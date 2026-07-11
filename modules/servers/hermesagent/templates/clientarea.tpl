@@ -563,6 +563,19 @@
             </li>
         </ul>
     </div>
+
+    <!-- Danger Zone -->
+    <div class="pairing-box" style="margin-top: 20px; border-color: #fca5a5; background: #fef2f2;">
+        <h4 class="pairing-title" style="color: #ef4444;">
+            <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> Danger Zone
+        </h4>
+        <p style="font-size: 13px; color: #7f1d1d; margin-bottom: 15px; line-height: 1.5;">
+            <strong>Warning:</strong> The Kill Switch will completely destroy your Hermes Agent and permanently wipe all its memory, skills, and configuration data. This action cannot be undone.
+        </p>
+        <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=killswitch" class="hermes-btn-primary" style="background: #dc2626;" onclick="return confirm('WARNING: Are you absolutely sure? All data will be lost forever and the agent will be terminated. Click OK to proceed.');">
+            <i class="fas fa-skull-crossbones"></i> Execute Kill Switch
+        </a>
+    </div>
 </div>
 
 <div id="hermes-toast" class="clipboard-toast">Copied to clipboard!</div>

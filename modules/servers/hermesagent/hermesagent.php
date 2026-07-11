@@ -714,6 +714,7 @@ function hermesagent_ClientAreaCustomButtonArray() {
         'Restart Agent' => 'restart',
         'View Logs' => 'viewlogs',
         'Regenerate Password' => 'regenpassword',
+        'Kill Switch' => 'killswitch',
     ];
 }
 
@@ -778,6 +779,35 @@ function hermesagent_regenpassword($params) {
         return "Dashboard Password regenerated successfully! New Password: " . $newPass;
     }
     return "Failed to regenerate password: " . $res;
+}
+
+/**
+ * Custom action: Kill Switch (Wipe Agent and Data forever)
+ */
+function hermesagent_killswitch($params) {
+    $serviceid = intval($params['serviceid']);
+    try {
+        $ssh = hermesagent_get_ssh_client($params);
+        
+        // Hard wipe container and data directory
+        $cmd = "docker rm -fv \"hermes-{$serviceid}\" 2>/dev/null || true && \\\n";
+        $cmd .= "rm -rf \"/srv/hermes/{$serviceid}\" && \\\n";
+        $cmd .= "if [ -f \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\" ]; then\n";
+        $cmd .= "  rm -f \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n";
+        $cmd .= "  systemctl reload caddy || caddy reload --config /etc/caddy/Caddyfile || true\n";
+        $cmd .= "fi";
+        
+        $result = $ssh->exec($cmd);
+        logModuleCall('hermesagent', 'KillSwitch', $cmd, $result);
+        
+        Capsule::table('mod_hermesagent_instances')
+            ->where('serviceid', $serviceid)
+            ->update(['status' => 'Terminated', 'updated_at' => date('Y-m-d H:i:s')]);
+            
+        return "success";
+    } catch (\Exception $e) {
+        return "Kill Switch failed: " . $e->getMessage();
+    }
 }
 
 /**
