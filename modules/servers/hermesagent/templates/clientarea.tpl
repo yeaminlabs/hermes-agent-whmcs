@@ -27,7 +27,7 @@
         content: '';
         position: absolute;
         top: 0; left: 0; right: 0; height: 3px;
-        background: linear-gradient(90deg, #e11d48, #f43f5e, #ec4899);
+        background: #CC0000;
         border-top-left-radius: 12px;
         border-top-right-radius: 12px;
     }
@@ -60,9 +60,7 @@
     .hermes-logo-icon {
         width: 100%;
         height: 100%;
-        background: #e11d48;
-        -webkit-mask: url(https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/hermesagent.png) no-repeat center / contain;
-        mask: url(https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/hermesagent.png) no-repeat center / contain;
+        object-fit: contain;
     }
 
     .hermes-title {
@@ -205,7 +203,7 @@
     }
     
     .code-val.url-val {
-        color: #e11d48;
+        color: #CC0000;
     }
 
     .btn-icon-only {
@@ -227,7 +225,7 @@
     }
 
     .hermes-btn-primary {
-        background: #f43f5e;
+        background: #CC0000;
         color: white;
         border: none;
         border-radius: 8px;
@@ -243,7 +241,7 @@
     }
 
     .hermes-btn-primary:hover {
-        background: #e11d48;
+        background: #aa0000;
         color: white;
         text-decoration: none;
     }
@@ -316,7 +314,7 @@
         width: 24px;
         height: 24px;
         border-radius: 50%;
-        background: #f43f5e;
+        background: #CC0000;
         color: white;
         display: flex;
         align-items: center;
@@ -352,7 +350,7 @@
     <div class="hermes-header">
         <div class="hermes-logo-area">
             <div class="hermes-logo-wrapper">
-                <div class="hermes-logo-icon"></div>
+                <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/hermesagent.png" class="hermes-logo-icon" alt="Hermes Logo" />
             </div>
             <div>
                 <h3 class="hermes-title">Hermes Cloud Agent</h3>

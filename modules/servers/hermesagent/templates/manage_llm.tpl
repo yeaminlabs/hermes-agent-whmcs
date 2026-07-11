@@ -13,7 +13,7 @@
     }
     .hermes-container::before {
         content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-        background: linear-gradient(90deg, #e11d48, #f43f5e, #ec4899);
+        background: #CC0000;
         border-top-left-radius: 12px;
         border-top-right-radius: 12px;
     }
@@ -33,15 +33,15 @@
         box-sizing: border-box;
     }
     .form-control-custom:focus {
-        outline: none; border-color: #f43f5e; box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.15);
+        outline: none; border-color: #CC0000; box-shadow: 0 0 0 3px rgba(204, 0, 0, 0.15);
     }
     .btn-submit {
-        background: #f43f5e; color: white;
+        background: #CC0000; color: white;
         border: none; padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer;
         font-size: 15px; transition: all 0.2s;
         display: inline-flex; align-items: center; gap: 8px;
     }
-    .btn-submit:hover { background: #e11d48; color: white; text-decoration: none; }
+    .btn-submit:hover { background: #aa0000; color: white; text-decoration: none; }
     .btn-back {
         background: #ffffff; color: #4b5563; border: 1px solid #d1d5db;
         padding: 12px 24px; border-radius: 8px; font-weight: 600; cursor: pointer;
@@ -68,7 +68,7 @@
 
     <form method="post" action="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=update_llm">
         <div class="card-section">
-            <h3 class="section-title"><i class="fas fa-brain" style="color: #f43f5e;"></i> Active Model</h3>
+            <h3 class="section-title"><i class="fas fa-brain" style="color: #CC0000;"></i> Active Model</h3>
             <div class="form-group">
                 <label class="form-label">Model String</label>
                 <input type="text" name="active_model" class="form-control-custom" value="{$active_model}" placeholder="e.g. openrouter/meta-llama/llama-3-70b-instruct">
@@ -77,7 +77,7 @@
         </div>
 
         <div class="card-section">
-            <h3 class="section-title"><i class="fas fa-key" style="color: #f43f5e;"></i> API Keys (Add as many as you want)</h3>
+            <h3 class="section-title"><i class="fas fa-key" style="color: #CC0000;"></i> API Keys (Add as many as you want)</h3>
             <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
@@ -109,7 +109,7 @@
         </div>
         
         <div class="card-section">
-            <h3 class="section-title"><i class="fab fa-telegram-plane" style="color: #f43f5e;"></i> Messaging Channels</h3>
+            <h3 class="section-title"><i class="fab fa-telegram-plane" style="color: #CC0000;"></i> Messaging Channels</h3>
             <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 8px;">
                     <i class="fab fa-telegram" style="color: #0088cc; font-size: 16px;"></i> Telegram Bot Token
@@ -126,7 +126,7 @@
         </div>
         
         <div class="card-section">
-            <h3 class="section-title"><i class="fas fa-server" style="color: #f43f5e;"></i> Custom OpenAI-Compatible Endpoint</h3>
+            <h3 class="section-title"><i class="fas fa-server" style="color: #CC0000;"></i> Custom OpenAI-Compatible Endpoint</h3>
             <div class="form-group">
                 <label class="form-label">Custom API Base URL</label>
                 <input type="text" name="custom_url" class="form-control-custom" value="{$custom_url}" placeholder="https://api.yourdomain.com/v1">
