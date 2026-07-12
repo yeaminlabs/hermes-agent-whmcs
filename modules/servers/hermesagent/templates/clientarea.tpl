@@ -610,7 +610,6 @@
     {/if}
 
     <!-- Website Live Chat Widget (Only if API Enabled) -->
-    {if $api_enabled}
     <div class="pairing-box" style="margin-top: 20px;">
         <h4 class="pairing-title">
             <i class="fas fa-comment-dots"></i> Website Live Chat Widget
@@ -748,7 +747,6 @@
         });
     }
     </script>
-    {/if}
     <!-- Hermes Desktop Pairing Guide -->
     <div class="pairing-box">
         <h4 class="pairing-title">
