@@ -1148,19 +1148,41 @@ function hermesagent_ClientArea($params) {
                 }
             }
             
-            // 2. Fetch Token Usage (Only for nvidia.nemotron-nano-3-30b)
-            $logCmd = "docker logs --tail 10000 \"hermes-{$serviceid}\" 2>&1 | grep -i 'nemotron-nano-3-30b' | grep -iE 'prompt_tokens|completion_tokens' || true";
+            // 2. Fetch Token Usage (Querying internal SQLite directly for Nemotron)
+            $pyScript = "import sqlite3, glob\n"
+                      . "p=0; c=0\n"
+                      . "for db in glob.glob('/opt/data/*.db') + glob.glob('/opt/data/*.sqlite*'):\n"
+                      . "    try:\n"
+                      . "        conn = sqlite3.connect(db); cur = conn.cursor()\n"
+                      . "        cur.execute(\"SELECT name FROM sqlite_master WHERE type='table'\")\n"
+                      . "        for (t,) in cur.fetchall():\n"
+                      . "            try:\n"
+                      . "                cur.execute('SELECT * FROM ' + t + ' LIMIT 1')\n"
+                      . "                cols = [desc[0].lower() for desc in cur.description]\n"
+                      . "                if 'prompt_tokens' in cols and 'completion_tokens' in cols and 'model' in cols:\n"
+                      . "                    cur.execute('SELECT prompt_tokens, completion_tokens, model FROM ' + t)\n"
+                      . "                    for row in cur.fetchall():\n"
+                      . "                        if 'nemotron' in str(row[2]).lower():\n"
+                      . "                            p += int(row[0] or 0); c += int(row[1] or 0)\n"
+                      . "                elif 'input_tokens' in cols and 'output_tokens' in cols and 'model' in cols:\n"
+                      . "                    cur.execute('SELECT input_tokens, output_tokens, model FROM ' + t)\n"
+                      . "                    for row in cur.fetchall():\n"
+                      . "                        if 'nemotron' in str(row[2]).lower():\n"
+                      . "                            p += int(row[0] or 0); c += int(row[1] or 0)\n"
+                      . "            except: pass\n"
+                      . "    except: pass\n"
+                      . "print('PROMPT_TOKENS:' + str(p) + ' COMPLETION_TOKENS:' + str(c))";
+            
+            $b64Script = base64_encode($pyScript);
+            $logCmd = "docker exec \"hermes-{$serviceid}\" python3 -c \"import base64; exec(base64.b64decode('{$b64Script}').decode('utf-8'))\" 2>/dev/null";
             $logOutput = $ssh->exec($logCmd);
             
             if (!empty($logOutput)) {
-                preg_match_all('/(?:prompt_tokens)[\'"]?\s*[:=]\s*(\d+)/i', $logOutput, $promptMatches);
-                if (!empty($promptMatches[1])) {
-                    $promptTokens = array_sum($promptMatches[1]);
+                if (preg_match('/PROMPT_TOKENS:(\d+)/', $logOutput, $m)) {
+                    $promptTokens = intval($m[1]);
                 }
-                
-                preg_match_all('/(?:completion_tokens)[\'"]?\s*[:=]\s*(\d+)/i', $logOutput, $compMatches);
-                if (!empty($compMatches[1])) {
-                    $completionTokens = array_sum($compMatches[1]);
+                if (preg_match('/COMPLETION_TOKENS:(\d+)/', $logOutput, $m)) {
+                    $completionTokens = intval($m[1]);
                 }
             }
         } catch (\Exception $e) {
