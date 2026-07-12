@@ -365,7 +365,8 @@ function hermesagent_CreateAccount($params) {
             "HERMES_DASHBOARD_PORT=9119",
             "HERMES_DASHBOARD_BASIC_AUTH_USERNAME=" . $dashboardUsername,
             "HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=" . $dashboardPassword,
-            "HERMES_DASHBOARD_BASIC_AUTH_SECRET=" . $dashboardSecret
+            "HERMES_DASHBOARD_BASIC_AUTH_SECRET=" . $dashboardSecret,
+            "AWS_BEARER_TOKEN_BEDROCK=ABSKTWFudGxlQXBpS2V5LTZmdnlvM2o4LWF0LTY1NzcyNzczOTM4NTpDVzRYUzNyMTBvdFVtT29aaXlwQ2djYTEraE9pM29DR1JVNkVsbFRheWFKVUxRbXI5dzRJK0ZBVXhHTT0="
         ];
         
         if ($llmProvider === 'openrouter') {
@@ -468,8 +469,7 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   body { padding-top: 40px !important; }
 </style>
 <div class="snbd-topbar" id="snbd-topbar">
-  <strong>SNBD HOST Beta Program</strong>
-  This is a free tier for our beta — still in active development. As part of helping us build and improve it, we collect usage tracking data that shows us how the service is performing.
+  <strong>AI is powered by Nvidia models already installed, free use for 15 days.</strong>
   <button class="snbd-topbar-close" onclick="document.getElementById('snbd-topbar').style.display='none'" title="Dismiss">&times;</button>
 </div>
 HTML;

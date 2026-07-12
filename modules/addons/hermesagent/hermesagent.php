@@ -157,49 +157,15 @@ function hermesagent_addon_setup_config_options($productId) {
     
     // Fetch OpenRouter Models dynamically
     $openRouterModels = [];
-    try {
-        $ch = curl_init('https://openrouter.ai/api/v1/models');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-        $response = curl_exec($ch);
-        curl_close($ch);
-        
-        if ($response) {
-            $data = json_decode($response, true);
-            if (isset($data['data']) && is_array($data['data'])) {
-                foreach ($data['data'] as $model) {
-                    $id = $model['id'];
-                    $name = $model['name'];
-                    
-                    // Check if free
-                    $isFree = false;
-                    if (isset($model['pricing']) && isset($model['pricing']['prompt']) && isset($model['pricing']['completion'])) {
-                        if (floatval($model['pricing']['prompt']) == 0 && floatval($model['pricing']['completion']) == 0) {
-                            $isFree = true;
-                        }
-                    }
-                    
-                    if ($isFree) {
-                        $name .= ' (Free)';
-                    }
-                    
-                    $openRouterModels[] = $id . '|' . $name;
-                }
-            }
-        }
-    } catch (\Exception $e) {
-        // Ignore errors and fallback
-    }
     
     $modelSubs = [
+        'bedrock/meta.llama3-70b-instruct-v1:0|Meta Llama 3 70B (Nvidia / AWS)',
+        'bedrock/anthropic.claude-3-haiku-20240307-v1:0|Claude 3 Haiku (AWS)',
         'hermes-4-405b|Hermes 4 405B (Default)',
         'gpt-4o|GPT-4o',
         'claude-3-5-sonnet|Claude 3.5 Sonnet'
     ];
-    
-    if (!empty($openRouterModels)) {
-        $modelSubs = array_merge($modelSubs, $openRouterModels);
-    }
+
 
     // 2. Define Options
     $options = [
