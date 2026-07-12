@@ -609,6 +609,146 @@
     </script>
     {/if}
 
+    <!-- Website Live Chat Widget (Only if API Enabled) -->
+    {if $api_enabled}
+    <div class="pairing-box" style="margin-top: 20px;">
+        <h4 class="pairing-title">
+            <i class="fas fa-comment-dots"></i> Website Live Chat Widget
+        </h4>
+        <p style="font-size: 13px; color: #4b5563; margin-bottom: 15px;">
+            Copy and paste this HTML snippet into the <code>&lt;body&gt;</code> of your website (WordPress, Shopify, etc.) to instantly add a floating AI customer support chat that connects directly to your Hermes Agent.
+        </p>
+        
+        <div style="position: relative;">
+            <textarea id="hermesWidgetCode" readonly style="width: 100%; height: 200px; padding: 15px; background: #1e1e1e; color: #d4d4d4; font-family: 'Fira Code', monospace; font-size: 12px; border-radius: 8px; border: 1px solid #333; resize: vertical;" onclick="this.select();">
+&lt;!-- Hermes Agent Live Chat Widget --&gt;
+&lt;script&gt;
+(function() {literal}{{/literal}
+    const API_URL = "{$api_url}/v1/chat/completions";
+    const API_KEY = "{$api_key}";
+{literal}
+    const style = document.createElement('style');
+    style.innerHTML = `
+        #hermes-chat-widget { position: fixed; bottom: 20px; right: 20px; z-index: 999999; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        #hermes-chat-button { width: 60px; height: 60px; border-radius: 50%; background: #3b82f6; box-shadow: 0 4px 12px rgba(0,0,0,0.15); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s; border: none; outline: none; }
+        #hermes-chat-button:hover { transform: scale(1.05); }
+        #hermes-chat-button svg { fill: white; width: 28px; height: 28px; }
+        #hermes-chat-window { display: none; width: 350px; height: 500px; background: white; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); flex-direction: column; overflow: hidden; margin-bottom: 15px; position: absolute; bottom: 70px; right: 0; }
+        #hermes-chat-header { background: #3b82f6; color: white; padding: 15px 20px; font-weight: 600; font-size: 16px; display: flex; justify-content: space-between; align-items: center; }
+        #hermes-chat-close { cursor: pointer; opacity: 0.8; }
+        #hermes-chat-close:hover { opacity: 1; }
+        #hermes-chat-messages { flex: 1; overflow-y: auto; padding: 15px; background: #f9fafb; display: flex; flex-direction: column; gap: 10px; }
+        .hermes-msg { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.4; word-wrap: break-word; }
+        .hermes-msg-user { background: #3b82f6; color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+        .hermes-msg-bot { background: white; color: #111827; border: 1px solid #e5e7eb; align-self: flex-start; border-bottom-left-radius: 2px; }
+        #hermes-chat-input-container { padding: 15px; background: white; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; }
+        #hermes-chat-input { flex: 1; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 8px; outline: none; font-size: 14px; }
+        #hermes-chat-input:focus { border-color: #3b82f6; }
+        #hermes-chat-send { background: #3b82f6; color: white; border: none; border-radius: 8px; padding: 0 15px; cursor: pointer; font-weight: 500; transition: background 0.2s; }
+        #hermes-chat-send:hover { background: #2563eb; }
+        #hermes-chat-send:disabled { background: #9ca3af; cursor: not-allowed; }
+        #hermes-chat-footer { font-size: 10px; text-align: center; color: #9ca3af; padding: 0 0 10px 0; background: white; }
+    `;
+    document.head.appendChild(style);
+
+    const container = document.createElement('div');
+    container.id = 'hermes-chat-widget';
+    container.innerHTML = `
+        <div id="hermes-chat-window">
+            <div id="hermes-chat-header">
+                <div>Live Chat</div>
+                <div id="hermes-chat-close">✕</div>
+            </div>
+            <div id="hermes-chat-messages">
+                <div class="hermes-msg hermes-msg-bot">Hello! How can I help you today?</div>
+            </div>
+            <div id="hermes-chat-input-container">
+                <input type="text" id="hermes-chat-input" placeholder="Type your message..." autocomplete="off">
+                <button id="hermes-chat-send">Send</button>
+            </div>
+            <div id="hermes-chat-footer">Powered by SNBD HOST</div>
+        </div>
+        <button id="hermes-chat-button">
+            <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"></path></svg>
+        </button>
+    `;
+    document.body.appendChild(container);
+
+    const btn = document.getElementById('hermes-chat-button');
+    const win = document.getElementById('hermes-chat-window');
+    const closeBtn = document.getElementById('hermes-chat-close');
+    const messages = document.getElementById('hermes-chat-messages');
+    const input = document.getElementById('hermes-chat-input');
+    const sendBtn = document.getElementById('hermes-chat-send');
+
+    let history = [{ role: "system", content: "You are a helpful customer service assistant for this website. Be concise and polite." }];
+
+    btn.addEventListener('click', () => { win.style.display = win.style.display === 'flex' ? 'none' : 'flex'; });
+    closeBtn.addEventListener('click', () => { win.style.display = 'none'; });
+
+    function addMsg(txt, isUser) {
+        const d = document.createElement('div');
+        d.className = 'hermes-msg ' + (isUser ? 'hermes-msg-user' : 'hermes-msg-bot');
+        d.innerText = txt;
+        messages.appendChild(d);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    async function sendMsg() {
+        const txt = input.value.trim();
+        if (!txt) return;
+        input.value = '';
+        input.disabled = sendBtn.disabled = true;
+        addMsg(txt, true);
+        history.push({ role: "user", content: txt });
+        
+        try {
+            const res = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
+                body: JSON.stringify({ model: "hermes-default", messages: history, temperature: 0.7 })
+            });
+            const data = await res.json();
+            const reply = data.choices[0].message.content;
+            addMsg(reply, false);
+            history.push({ role: "assistant", content: reply });
+        } catch (e) {
+            addMsg("Sorry, I am having trouble connecting right now.", false);
+        }
+        input.disabled = sendBtn.disabled = false;
+        input.focus();
+    }
+
+    sendBtn.addEventListener('click', sendMsg);
+    input.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMsg(); });
+{/literal}})();
+&lt;/script&gt;
+            </textarea>
+            
+            <button onclick="copyHermesWidgetCode(event)" style="position: absolute; top: 10px; right: 20px; background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;">
+                <i class="far fa-copy"></i> Copy Code
+            </button>
+        </div>
+    </div>
+    
+    <script>
+    function copyHermesWidgetCode(event) {
+        var copyText = document.getElementById("hermesWidgetCode");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        navigator.clipboard.writeText(copyText.value).then(function() {
+            const btn = event.currentTarget;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            btn.style.background = '#10b981';
+            setTimeout(function() {
+                btn.innerHTML = originalHtml;
+                btn.style.background = '#3b82f6';
+            }, 2000);
+        });
+    }
+    </script>
+    {/if}
     <!-- Hermes Desktop Pairing Guide -->
     <div class="pairing-box">
         <h4 class="pairing-title">
