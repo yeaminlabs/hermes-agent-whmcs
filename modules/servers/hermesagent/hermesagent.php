@@ -1148,8 +1148,8 @@ function hermesagent_ClientArea($params) {
                 }
             }
             
-            // 2. Fetch Token Usage
-            $logCmd = "docker logs --tail 5000 \"hermes-{$serviceid}\" 2>&1 | grep -iE 'prompt_tokens|completion_tokens' || true";
+            // 2. Fetch Token Usage (Only for nvidia.nemotron-nano-3-30b)
+            $logCmd = "docker logs --tail 10000 \"hermes-{$serviceid}\" 2>&1 | grep -i 'nemotron-nano-3-30b' | grep -iE 'prompt_tokens|completion_tokens' || true";
             $logOutput = $ssh->exec($logCmd);
             
             if (!empty($logOutput)) {
