@@ -760,7 +760,6 @@ function hermesagent_ChangePackage($params) {
  */
 function hermesagent_ClientAreaCustomButtonArray() {
     return [
-        'Get Stats' => 'getstats',
         'Manage LLM Providers' => 'manage_llm',
         'Restart Agent' => 'restart',
         'View Logs' => 'viewlogs',
@@ -831,70 +830,6 @@ function hermesagent_regenpassword($params) {
         return "Dashboard Password regenerated successfully! New Password: " . $newPass;
     }
     return "Failed to regenerate password: " . $res;
-}
-
-/**
- * Custom action: Get Stats (AJAX endpoint)
- */
-function hermesagent_getstats($params) {
-    while (ob_get_level()) {
-        ob_end_clean();
-    }
-    header('Content-Type: application/json');
-    $serviceid = intval($params['serviceid']);
-    try {
-        $ssh = hermesagent_get_ssh_client($params);
-        
-        // Fetch CPU and Mem Usage
-        $statsCmd = "docker stats \"hermes-{$serviceid}\" --no-stream --format \"{{.CPUPerc}}|{{.MemUsage}}\" 2>/dev/null";
-        $statsOutput = trim($ssh->exec($statsCmd));
-        
-        $cpu = '0%';
-        $mem = '0B / 0B';
-        if (!empty($statsOutput)) {
-            $parts = explode('|', $statsOutput);
-            if (count($parts) >= 2) {
-                $cpu = trim($parts[0]);
-                $mem = trim($parts[1]);
-            }
-        }
-        
-        // Fetch Token Usage by grepping logs
-        // This is a naive implementation looking for "prompt_tokens" and "completion_tokens" in the last 1000 lines
-        $logCmd = "docker logs --tail 2000 \"hermes-{$serviceid}\" 2>&1 | grep -E '\"prompt_tokens\"|\"completion_tokens\"' || true";
-        $logOutput = $ssh->exec($logCmd);
-        
-        $promptTokens = 0;
-        $completionTokens = 0;
-        
-        if (!empty($logOutput)) {
-            preg_match_all('/"prompt_tokens"\s*:\s*(\d+)/i', $logOutput, $promptMatches);
-            if (!empty($promptMatches[1])) {
-                $promptTokens = array_sum($promptMatches[1]);
-            }
-            
-            preg_match_all('/"completion_tokens"\s*:\s*(\d+)/i', $logOutput, $compMatches);
-            if (!empty($compMatches[1])) {
-                $completionTokens = array_sum($compMatches[1]);
-            }
-        }
-        
-        echo json_encode([
-            'success' => true,
-            'cpu' => $cpu,
-            'memory' => $mem,
-            'tokens' => [
-                'prompt' => $promptTokens,
-                'completion' => $completionTokens,
-                'total' => $promptTokens + $completionTokens
-            ]
-        ]);
-        exit;
-        
-    } catch (\Exception $e) {
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-        exit;
-    }
 }
 
 /**
@@ -1189,6 +1124,50 @@ function hermesagent_ClientArea($params) {
     $enableApiServer = hermesagent_resolve_param($params, 'configoption8', 'Enable OpenAI-Compatible API', 'no');
     $apiEnabledVal = (strtolower($enableApiServer) === 'yes' || $enableApiServer === '1' || $enableApiServer === true || $enableApiServer === 'on');
     
+    // Fetch live stats via SSH to pass to the template
+    $cpu = '--';
+    $mem = '--';
+    $promptTokens = 0;
+    $completionTokens = 0;
+    
+    if ($record->status === 'Active') {
+        try {
+            $ssh = hermesagent_get_ssh_client($params);
+            
+            // 1. Fetch CPU and Mem Usage
+            $statsCmd = "docker stats \"hermes-{$serviceid}\" --no-stream --format \"{{.CPUPerc}}|{{.MemUsage}}\" 2>/dev/null";
+            $statsOutput = trim($ssh->exec($statsCmd));
+            
+            if (!empty($statsOutput)) {
+                $parts = explode('|', $statsOutput);
+                if (count($parts) >= 2) {
+                    $cpu = trim($parts[0]);
+                    $mem = trim($parts[1]);
+                }
+            }
+            
+            // 2. Fetch Token Usage
+            $logCmd = "docker logs --tail 2000 \"hermes-{$serviceid}\" 2>&1 | grep -E '\"prompt_tokens\"|\"completion_tokens\"' || true";
+            $logOutput = $ssh->exec($logCmd);
+            
+            if (!empty($logOutput)) {
+                preg_match_all('/"prompt_tokens"\s*:\s*(\d+)/i', $logOutput, $promptMatches);
+                if (!empty($promptMatches[1])) {
+                    $promptTokens = array_sum($promptMatches[1]);
+                }
+                
+                preg_match_all('/"completion_tokens"\s*:\s*(\d+)/i', $logOutput, $compMatches);
+                if (!empty($compMatches[1])) {
+                    $completionTokens = array_sum($compMatches[1]);
+                }
+            }
+        } catch (\Exception $e) {
+            // Silently ignore SSH errors for stats so it doesn't break the client area
+            $cpu = 'Error';
+            $mem = 'Error';
+        }
+    }
+    
     return [
         'templatefile' => 'templates/clientarea',
         'vars' => [
@@ -1201,7 +1180,11 @@ function hermesagent_ClientArea($params) {
             'api_key' => $record->api_key,
             'dash_port' => $record->dash_port,
             'api_port' => $record->api_port,
-            'is_secure' => $isSecure
+            'is_secure' => $isSecure,
+            'stat_cpu' => $cpu,
+            'stat_mem' => $mem,
+            'stat_prompt_tokens' => $promptTokens,
+            'stat_completion_tokens' => $completionTokens
         ]
     ];
 }

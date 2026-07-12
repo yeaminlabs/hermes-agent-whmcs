@@ -547,19 +547,16 @@
     <div class="pairing-box" style="margin-top: 20px;">
         <h4 class="pairing-title">
             <i class="fas fa-chart-line"></i> Analytics & Usage
-            <span id="stats-loading" style="font-size: 12px; font-weight: normal; color: #6b7280; float: right; margin-top: 4px;">
-                <i class="fas fa-spinner fa-spin"></i> Fetching Live Data...
-            </span>
         </h4>
         
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
             <div style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px;">
                 <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">CPU Usage</div>
-                <div id="stat-cpu" style="font-family: 'Fira Code', monospace; font-size: 18px; font-weight: 700; color: #111827;">--</div>
+                <div id="stat-cpu" style="font-family: 'Fira Code', monospace; font-size: 18px; font-weight: 700; color: #111827;">{$stat_cpu}</div>
             </div>
             <div style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px;">
                 <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Memory Usage</div>
-                <div id="stat-mem" style="font-family: 'Fira Code', monospace; font-size: 18px; font-weight: 700; color: #111827;">--</div>
+                <div id="stat-mem" style="font-family: 'Fira Code', monospace; font-size: 18px; font-weight: 700; color: #111827;">{$stat_mem}</div>
             </div>
         </div>
 
@@ -570,70 +567,44 @@
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        fetch('clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=getstats')
-            .then(response => response.text())
-            .then(text => {
-                document.getElementById('stats-loading').style.display = 'none';
-                try {
-                    const data = JSON.parse(text);
-                    if (data.success) {
-                        document.getElementById('stat-cpu').innerText = data.cpu;
-                        document.getElementById('stat-mem').innerText = data.memory;
-                        
-                        const ctx = document.getElementById('tokenUsageChart').getContext('2d');
-                        new Chart(ctx, {
-                            type: 'doughnut',
-                            data: {
-                                labels: ['Prompt Tokens', 'Completion Tokens'],
-                                datasets: [{
-                                    data: [data.tokens.prompt, data.tokens.completion],
-                                    backgroundColor: ['#3b82f6', '#10b981'],
-                                    hoverBackgroundColor: ['#2563eb', '#059669'],
-                                    borderWidth: 0
-                                }]
-                            },
-                            options: {
-                                responsive: true,
-                                maintainAspectRatio: false,
-                                plugins: {
-                                    legend: {
-                                        position: 'bottom',
-                                        labels: {
-                                            font: {
-                                                family: "'Outfit', sans-serif"
-                                            }
-                                        }
-                                    },
-                                    title: {
-                                        display: true,
-                                        text: 'Recent Token Processing',
-                                        font: {
-                                            family: "'Outfit', sans-serif",
-                                            size: 14,
-                                            weight: '600'
-                                        },
-                                        color: '#4b5563'
-                                    }
-                                },
-                                cutout: '70%'
+        const ctx = document.getElementById('tokenUsageChart').getContext('2d');
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Prompt Tokens', 'Completion Tokens'],
+                datasets: [{
+                    data: [{$stat_prompt_tokens}, {$stat_completion_tokens}],
+                    backgroundColor: ['#3b82f6', '#10b981'],
+                    hoverBackgroundColor: ['#2563eb', '#059669'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: {
+                                family: "'Outfit', sans-serif"
                             }
-                        });
-                    } else {
-                        console.error('Stats Error:', data.error);
-                        document.getElementById('stats-loading').style.display = 'inline';
-                        document.getElementById('stats-loading').innerHTML = '<i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> Failed: ' + data.error;
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Recent Token Processing',
+                        font: {
+                            family: "'Outfit', sans-serif",
+                            size: 14,
+                            weight: '600'
+                        },
+                        color: '#4b5563'
                     }
-                } catch (e) {
-                    console.error('Failed to parse JSON response:', text);
-                    document.getElementById('stats-loading').style.display = 'inline';
-                    document.getElementById('stats-loading').innerHTML = '<i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> Invalid response from server';
-                }
-            })
-            .catch(error => {
-                console.error('AJAX Error:', error);
-                document.getElementById('stats-loading').style.display = 'inline';
-                document.getElementById('stats-loading').innerHTML = '<i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> Network Error';
-            });
+                },
+                cutout: '70%'
+            }
+        });
     });
     </script>
     {/if}
