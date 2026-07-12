@@ -159,11 +159,7 @@ function hermesagent_addon_setup_config_options($productId) {
     $openRouterModels = [];
     
     $modelSubs = [
-        'bedrock/meta.llama3-70b-instruct-v1:0|Meta Llama 3 70B (Nvidia / AWS)',
-        'bedrock/anthropic.claude-3-haiku-20240307-v1:0|Claude 3 Haiku (AWS)',
-        'hermes-4-405b|Hermes 4 405B (Default)',
-        'gpt-4o|GPT-4o',
-        'claude-3-5-sonnet|Claude 3.5 Sonnet'
+        'nvidia.nemotron-nano-3-30b|Nvidia Nemotron Nano 3 30B (Free)'
     ];
 
 
@@ -173,11 +169,7 @@ function hermesagent_addon_setup_config_options($productId) {
             'name' => 'LLM Provider',
             'type' => 1, // Dropdown
             'subs' => [
-                'nous_portal|Nous Portal (recommended)',
-                'openrouter|OpenRouter',
-                'openai|OpenAI',
-                'anthropic|Anthropic',
-                'custom|Custom Endpoint'
+                'bedrock|Amazon Bedrock (Nvidia Models)'
             ]
         ],
         [
