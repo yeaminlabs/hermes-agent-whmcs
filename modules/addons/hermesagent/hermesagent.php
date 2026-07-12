@@ -48,6 +48,27 @@ function hermesagent_activate() {
                 }
             );
         }
+        // Quiz leads capture table
+        if (!Capsule::schema()->hasTable('mod_hermesagent_quiz_leads')) {
+            Capsule::schema()->create(
+                'mod_hermesagent_quiz_leads',
+                function ($table) {
+                    $table->increments('id');
+                    $table->string('name', 120)->default('');
+                    $table->string('email', 200);
+                    $table->string('whatsapp', 30)->default('');
+                    $table->string('profile', 30)->default('');
+                    $table->text('answers')->nullable();
+                    $table->string('status', 20)->default('new');
+                    $table->text('notes')->nullable();
+                    $table->timestamps();
+                    $table->index('email');
+                    $table->index('status');
+                    $table->index('profile');
+                }
+            );
+        }
+
         return [
             'status' => 'success',
             'description' => 'Hermes Agent Manager activated and database tables configured successfully.'
@@ -297,6 +318,38 @@ function hermesagent_output($vars) {
         // ignore
     }
 
+    // 0. Ensure quiz leads table exists (safe to run on every page load)
+    try {
+        if (!Capsule::schema()->hasTable('mod_hermesagent_quiz_leads')) {
+            Capsule::schema()->create('mod_hermesagent_quiz_leads', function ($table) {
+                $table->increments('id');
+                $table->string('name', 120)->default('');
+                $table->string('email', 200);
+                $table->string('whatsapp', 30)->default('');
+                $table->string('profile', 30)->default('');
+                $table->text('answers')->nullable();
+                $table->string('status', 20)->default('new');
+                $table->text('notes')->nullable();
+                $table->timestamps();
+            });
+        }
+    } catch (\Exception $e) { /* already exists or harmless */ }
+
+    // 0b. Handle quiz lead status update
+    $leadMessage = '';
+    if (isset($_POST['update_lead_status'])) {
+        $leadId     = intval($_POST['lead_id']);
+        $leadStatus = in_array($_POST['lead_status'], ['new','contacted','converted','rejected'])
+                      ? $_POST['lead_status'] : 'new';
+        $leadNotes  = htmlspecialchars($_POST['lead_notes'] ?? '', ENT_QUOTES, 'UTF-8');
+        if ($leadId > 0) {
+            Capsule::table('mod_hermesagent_quiz_leads')
+                ->where('id', $leadId)
+                ->update(['status' => $leadStatus, 'notes' => $leadNotes, 'updated_at' => now()]);
+            $leadMessage = '<div class="alert alert-success" style="padding:12px 16px;border-radius:6px;margin-bottom:20px;font-weight:600;"><i class="fas fa-check-circle"></i> Lead #' . $leadId . ' updated.</div>';
+        }
+    }
+
     // 1. Handle One-Click config submit
     $message = '';
     if (isset($_POST['configure_product'])) {
@@ -344,6 +397,21 @@ function hermesagent_output($vars) {
             'tblservers.secure as server_secure'
         )
         ->get();
+
+    // 3b. Fetch quiz leads
+    $leads = [];
+    $leadsTotal = $leadsNew = $leadsContacted = $leadsConverted = 0;
+    try {
+        $leads = Capsule::table('mod_hermesagent_quiz_leads')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        foreach ($leads as $l) {
+            $leadsTotal++;
+            if ($l->status === 'new')       $leadsNew++;
+            elseif ($l->status === 'contacted')  $leadsContacted++;
+            elseif ($l->status === 'converted')  $leadsConverted++;
+        }
+    } catch (\Exception $e) { /* table may not exist yet */ }
 
     // 4. Calculate Stats
     $total = count($deployments);
@@ -642,6 +710,158 @@ function hermesagent_output($vars) {
                 </div>
             </div>
         </div>
+        <!-- Quiz Leads Section -->
+        <?php echo $leadMessage; ?>
+        <div class="ha-panel" style="margin-top:0;">
+            <div class="ha-panel-header" style="background:#f0f4ff; border-color:#c8d4f8;">
+                <h4 class="ha-panel-title" style="color:#2b5be8;">
+                    <i class="fas fa-poll"></i> Quiz Leads — Beta Program Applicants
+                </h4>
+                <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+                    <span class="ha-badge" style="background:#e8f0fe;color:#2b5be8;padding:5px 10px;">Total: <?php echo $leadsTotal; ?></span>
+                    <span class="ha-badge" style="background:#fff3cd;color:#856404;padding:5px 10px;">New: <?php echo $leadsNew; ?></span>
+                    <span class="ha-badge" style="background:#d1ecf1;color:#0c5460;padding:5px 10px;">Contacted: <?php echo $leadsContacted; ?></span>
+                    <span class="ha-badge badge-active" style="padding:5px 10px;">Converted: <?php echo $leadsConverted; ?></span>
+                </div>
+            </div>
+
+            <?php if (count($leads) > 0): ?>
+            <div style="overflow-x:auto;">
+                <table class="table-ha">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>WhatsApp</th>
+                            <th>Profile Type</th>
+                            <th>Answers</th>
+                            <th>Date</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $profileLabels = [
+                            'architect' => ['🎯 Architect', '#e8f0fe', '#2b5be8'],
+                            'sprinter'  => ['⚡ Sprinter',  '#fff8e1', '#b7750a'],
+                            'craftsman' => ['🔥 Craftsman', '#fff0f0', '#b71c1c'],
+                            'explorer'  => ['🚀 Explorer',  '#e8f5e9', '#1b5e20'],
+                        ];
+                        $statusOptions = ['new' => 'New', 'contacted' => 'Contacted', 'converted' => 'Converted', 'rejected' => 'Rejected'];
+                        $statusBadge   = ['new' => 'badge-pending', 'contacted' => 'badge-suspended', 'converted' => 'badge-active', 'rejected' => 'badge-error'];
+                        foreach ($leads as $lead):
+                            $pLabel = $profileLabels[$lead->profile] ?? [$lead->profile, '#f5f5f5', '#555'];
+                            $answersDecoded = json_decode($lead->answers ?? '{}', true);
+                            $answerStr = '';
+                            if (is_array($answersDecoded)) {
+                                $parts = [];
+                                for ($qi = 1; $qi <= 5; $qi++) {
+                                    if (isset($answersDecoded[$qi])) $parts[] = 'Q' . $qi . ':' . $answersDecoded[$qi]['letter'];
+                                }
+                                $answerStr = implode(' ', $parts);
+                            }
+                        ?>
+                        <tr>
+                            <td style="color:#888;font-size:12px;">#<?php echo $lead->id; ?></td>
+                            <td><strong><?php echo htmlspecialchars($lead->name ?: '—'); ?></strong></td>
+                            <td>
+                                <a href="mailto:<?php echo htmlspecialchars($lead->email); ?>" style="color:#4e73df;font-weight:600;">
+                                    <?php echo htmlspecialchars($lead->email); ?>
+                                </a>
+                            </td>
+                            <td>
+                                <a href="https://wa.me/<?php echo preg_replace('/\D/', '', $lead->whatsapp); ?>" target="_blank" style="color:#1cc88a;font-weight:600;">
+                                    <?php echo htmlspecialchars($lead->whatsapp ?: '—'); ?>
+                                </a>
+                            </td>
+                            <td>
+                                <span style="background:<?php echo $pLabel[1]; ?>;color:<?php echo $pLabel[2]; ?>;padding:4px 10px;border-radius:4px;font-size:12px;font-weight:700;white-space:nowrap;">
+                                    <?php echo $pLabel[0]; ?>
+                                </span>
+                            </td>
+                            <td>
+                                <code style="font-size:11px;color:#777;background:#f8f9fc;padding:3px 6px;border-radius:3px;">
+                                    <?php echo htmlspecialchars($answerStr ?: '—'); ?>
+                                </code>
+                            </td>
+                            <td style="white-space:nowrap;font-size:12px;color:#888;"><?php echo date('M j, Y', strtotime($lead->created_at)); ?></td>
+                            <td>
+                                <span class="ha-badge <?php echo $statusBadge[$lead->status] ?? 'badge-pending'; ?>">
+                                    <?php echo $statusOptions[$lead->status] ?? $lead->status; ?>
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn-ha-primary" style="padding:6px 12px;font-size:12px;"
+                                    onclick="openLeadModal(<?php echo $lead->id; ?>,'<?php echo htmlspecialchars($lead->name); ?>','<?php echo htmlspecialchars($lead->status); ?>','<?php echo htmlspecialchars(addslashes($lead->notes ?? '')); ?>')">
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php else: ?>
+            <div style="text-align:center;padding:40px 20px;color:#777;">
+                <i class="fas fa-poll" style="font-size:40px;margin-bottom:10px;color:#ccc;display:block;"></i>
+                <p style="margin:0;font-size:14px;">No quiz submissions yet. Share your quiz link to start collecting leads.</p>
+            </div>
+            <?php endif; ?>
+        </div>
+
+    </div><!-- /.ha-wrapper -->
+
+    <!-- Lead Edit Modal -->
+    <div id="leadModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center;">
+        <div style="background:#fff;border-radius:10px;padding:28px;max-width:440px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+            <h4 style="margin:0 0 20px;font-size:17px;font-weight:700;color:#2b3e50;">
+                Update Lead — <span id="modal-name"></span>
+            </h4>
+            <form method="post" action="">
+                <input type="hidden" name="lead_id" id="modal-lead-id">
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#666;display:block;margin-bottom:5px;">Status</label>
+                    <select name="lead_status" id="modal-status" class="form-control" style="height:38px;border-radius:6px;">
+                        <option value="new">New</option>
+                        <option value="contacted">Contacted</option>
+                        <option value="converted">Converted</option>
+                        <option value="rejected">Rejected</option>
+                    </select>
+                </div>
+                <div style="margin-bottom:20px;">
+                    <label style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#666;display:block;margin-bottom:5px;">Notes</label>
+                    <textarea name="lead_notes" id="modal-notes" rows="3" class="form-control" style="border-radius:6px;resize:vertical;" placeholder="Any notes about this lead..."></textarea>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <button type="submit" name="update_lead_status" class="btn-ha-primary" style="flex:1;">
+                        <i class="fas fa-save"></i> Save
+                    </button>
+                    <button type="button" onclick="closeLeadModal()" style="flex:1;padding:10px;border:1px solid #ddd;background:#fff;border-radius:6px;cursor:pointer;font-weight:600;">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
+
+    <script>
+    function openLeadModal(id, name, status, notes) {
+        document.getElementById('modal-lead-id').value = id;
+        document.getElementById('modal-name').textContent = name || ('#' + id);
+        document.getElementById('modal-status').value = status;
+        document.getElementById('modal-notes').value = notes;
+        var m = document.getElementById('leadModal');
+        m.style.display = 'flex';
+    }
+    function closeLeadModal() {
+        document.getElementById('leadModal').style.display = 'none';
+    }
+    document.getElementById('leadModal').addEventListener('click', function(e) {
+        if (e.target === this) closeLeadModal();
+    });
+    </script>
+
     <?php
 }

@@ -384,6 +384,15 @@
 </style>
 
 <div class="hermes-container">
+    {if $deployment_status eq 'Suspended' or $deployment_status eq 'Terminated'}
+    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); z-index: 99; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.3);">
+        <div style="background: #fef2f2; padding: 30px; border-radius: 12px; border: 2px solid #ef4444; max-width: 85%; text-align: center; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.2);">
+            <i class="fas fa-ban" style="font-size: 40px; color: #ef4444; margin-bottom: 15px;"></i>
+            <h3 style="margin: 0 0 10px 0; color: #991b1b; font-size: 20px;">Account {$deployment_status}</h3>
+            <p style="color: #7f1d1d; margin: 0; font-size: 14px; line-height: 1.5;">Your Agent account has been suspended or flagged. This typically happens due to a missed payment. Please check your invoices and clear the due dates before it gets terminated. Terminated or Suspended users will not be able to recover any agent data or API keys from their agent.</p>
+        </div>
+    </div>
+    {/if}
     <div class="hermes-header">
         <div class="hermes-logo-area">
             <div class="hermes-logo-wrapper">

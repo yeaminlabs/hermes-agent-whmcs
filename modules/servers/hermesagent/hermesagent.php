@@ -909,7 +909,8 @@ function hermesagent_manage_llm($params) {
         'discord_token' => '',
         'serviceid' => $serviceid,
         'success' => isset($_GET['success']) ? true : false,
-        'error' => ''
+        'error' => '',
+        'deployment_status' => $params['status']
     ];
     
     try {
