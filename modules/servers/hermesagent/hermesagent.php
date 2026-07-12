@@ -553,7 +553,30 @@ function hermesagent_SuspendAccount($params) {
     
     try {
         $ssh = hermesagent_get_ssh_client($params);
+        
+        $hostname = "hermes.deltadns.xyz";
+        $enableApiServer = hermesagent_resolve_param($params, 'configoption8', 'Enable OpenAI-Compatible API', 'no');
+        $apiEnabledVal = ($enableApiServer === 'yes' || $enableApiServer === 'on' || $enableApiServer === '1');
+        
+        $suspendedHtml = "<!DOCTYPE html><html><head><title>Account Suspended</title><style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f9fafb;color:#111827;} .box{text-align:center;padding:40px;background:white;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);max-width:500px;} h1{color:#dc2626;margin-top:0;} p{color:#4b5563;line-height:1.5;}</style></head><body><div class=\"box\"><h1>Account Suspended</h1><p>Your Hermes Agent account has been suspended.</p><p>Please check your billing status or contact support to reactivate your service.</p></div></body></html>";
+        
+        $caddySuspended = <<<CADDY
+hermes-{$serviceid}.{$hostname} {
+    respond `{$suspendedHtml}` 403 {
+        close
+    }
+}
+CADDY;
+        if ($apiEnabledVal) {
+            $caddySuspended .= "\nhermes-api-{$serviceid}.{$hostname} {\n    respond `{\"error\":\"Account Suspended\"}` 403 {\n        close\n    }\n}";
+        }
+        
         $cmd = "docker stop \"hermes-{$serviceid}\"";
+        $cmd .= " && if [ -d \"/etc/caddy/conf.d\" ]; then\n";
+        $cmd .= "  cat << 'EOF' > \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n{$caddySuspended}\nEOF\n";
+        $cmd .= "  systemctl reload caddy || caddy reload --config /etc/caddy/Caddyfile || true\n";
+        $cmd .= "fi";
+        
         $result = $ssh->exec($cmd);
         
         logModuleCall('hermesagent', 'SuspendAccount', $cmd, $result);
@@ -576,7 +599,34 @@ function hermesagent_UnsuspendAccount($params) {
     
     try {
         $ssh = hermesagent_get_ssh_client($params);
+        
+        $record = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceid)->first();
+        if (!$record) {
+            return "Deployment record not found in database.";
+        }
+        
+        $dashPort = $record->dash_port;
+        $apiPort = $record->api_port;
+        $hostname = "hermes.deltadns.xyz";
+        
+        $enableApiServer = hermesagent_resolve_param($params, 'configoption8', 'Enable OpenAI-Compatible API', 'no');
+        $apiEnabledVal = ($enableApiServer === 'yes' || $enableApiServer === 'on' || $enableApiServer === '1');
+        
+        $caddyConfig = <<<CADDY
+hermes-{$serviceid}.{$hostname} {
+    reverse_proxy 127.0.0.1:{$dashPort}
+}
+CADDY;
+        if ($apiEnabledVal) {
+            $caddyConfig .= "\nhermes-api-{$serviceid}.{$hostname} {\n    reverse_proxy 127.0.0.1:{$apiPort}\n}";
+        }
+        
         $cmd = "docker start \"hermes-{$serviceid}\"";
+        $cmd .= " && if [ -d \"/etc/caddy/conf.d\" ]; then\n";
+        $cmd .= "  cat << 'EOF' > \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n{$caddyConfig}\nEOF\n";
+        $cmd .= "  systemctl reload caddy || caddy reload --config /etc/caddy/Caddyfile || true\n";
+        $cmd .= "fi";
+        
         $result = $ssh->exec($cmd);
         
         logModuleCall('hermesagent', 'UnsuspendAccount', $cmd, $result);
@@ -710,6 +760,7 @@ function hermesagent_ChangePackage($params) {
  */
 function hermesagent_ClientAreaCustomButtonArray() {
     return [
+        'Get Stats' => 'getstats',
         'Manage LLM Providers' => 'manage_llm',
         'Restart Agent' => 'restart',
         'View Logs' => 'viewlogs',
@@ -780,6 +831,67 @@ function hermesagent_regenpassword($params) {
         return "Dashboard Password regenerated successfully! New Password: " . $newPass;
     }
     return "Failed to regenerate password: " . $res;
+}
+
+/**
+ * Custom action: Get Stats (AJAX endpoint)
+ */
+function hermesagent_getstats($params) {
+    header('Content-Type: application/json');
+    $serviceid = intval($params['serviceid']);
+    try {
+        $ssh = hermesagent_get_ssh_client($params);
+        
+        // Fetch CPU and Mem Usage
+        $statsCmd = "docker stats \"hermes-{$serviceid}\" --no-stream --format \"{{.CPUPerc}}|{{.MemUsage}}\" 2>/dev/null";
+        $statsOutput = trim($ssh->exec($statsCmd));
+        
+        $cpu = '0%';
+        $mem = '0B / 0B';
+        if (!empty($statsOutput)) {
+            $parts = explode('|', $statsOutput);
+            if (count($parts) >= 2) {
+                $cpu = trim($parts[0]);
+                $mem = trim($parts[1]);
+            }
+        }
+        
+        // Fetch Token Usage by grepping logs
+        // This is a naive implementation looking for "prompt_tokens" and "completion_tokens" in the last 1000 lines
+        $logCmd = "docker logs --tail 2000 \"hermes-{$serviceid}\" 2>&1 | grep -E '\"prompt_tokens\"|\"completion_tokens\"' || true";
+        $logOutput = $ssh->exec($logCmd);
+        
+        $promptTokens = 0;
+        $completionTokens = 0;
+        
+        if (!empty($logOutput)) {
+            preg_match_all('/"prompt_tokens"\s*:\s*(\d+)/i', $logOutput, $promptMatches);
+            if (!empty($promptMatches[1])) {
+                $promptTokens = array_sum($promptMatches[1]);
+            }
+            
+            preg_match_all('/"completion_tokens"\s*:\s*(\d+)/i', $logOutput, $compMatches);
+            if (!empty($compMatches[1])) {
+                $completionTokens = array_sum($compMatches[1]);
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'cpu' => $cpu,
+            'memory' => $mem,
+            'tokens' => [
+                'prompt' => $promptTokens,
+                'completion' => $completionTokens,
+                'total' => $promptTokens + $completionTokens
+            ]
+        ]);
+        exit;
+        
+    } catch (\Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
 }
 
 /**
