@@ -1147,16 +1147,16 @@ function hermesagent_ClientArea($params) {
             }
             
             // 2. Fetch Token Usage
-            $logCmd = "docker logs --tail 2000 \"hermes-{$serviceid}\" 2>&1 | grep -E '\"prompt_tokens\"|\"completion_tokens\"' || true";
+            $logCmd = "docker logs --tail 5000 \"hermes-{$serviceid}\" 2>&1 | grep -iE 'prompt_tokens|completion_tokens' || true";
             $logOutput = $ssh->exec($logCmd);
             
             if (!empty($logOutput)) {
-                preg_match_all('/"prompt_tokens"\s*:\s*(\d+)/i', $logOutput, $promptMatches);
+                preg_match_all('/(?:prompt_tokens)[\'"]?\s*[:=]\s*(\d+)/i', $logOutput, $promptMatches);
                 if (!empty($promptMatches[1])) {
                     $promptTokens = array_sum($promptMatches[1]);
                 }
                 
-                preg_match_all('/"completion_tokens"\s*:\s*(\d+)/i', $logOutput, $compMatches);
+                preg_match_all('/(?:completion_tokens)[\'"]?\s*[:=]\s*(\d+)/i', $logOutput, $compMatches);
                 if (!empty($compMatches[1])) {
                     $completionTokens = array_sum($compMatches[1]);
                 }
