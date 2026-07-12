@@ -837,6 +837,9 @@ function hermesagent_regenpassword($params) {
  * Custom action: Get Stats (AJAX endpoint)
  */
 function hermesagent_getstats($params) {
+    while (ob_get_level()) {
+        ob_end_clean();
+    }
     header('Content-Type: application/json');
     $serviceid = intval($params['serviceid']);
     try {

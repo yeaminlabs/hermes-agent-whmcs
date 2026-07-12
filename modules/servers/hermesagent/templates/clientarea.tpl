@@ -571,58 +571,68 @@
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         fetch('clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=getstats')
-            .then(response => response.json())
-            .then(data => {
+            .then(response => response.text())
+            .then(text => {
                 document.getElementById('stats-loading').style.display = 'none';
-                
-                if (data.success) {
-                    document.getElementById('stat-cpu').innerText = data.cpu;
-                    document.getElementById('stat-mem').innerText = data.memory;
-                    
-                    const ctx = document.getElementById('tokenUsageChart').getContext('2d');
-                    new Chart(ctx, {
-                        type: 'doughnut',
-                        data: {
-                            labels: ['Prompt Tokens', 'Completion Tokens'],
-                            datasets: [{
-                                data: [data.tokens.prompt, data.tokens.completion],
-                                backgroundColor: ['#3b82f6', '#10b981'],
-                                hoverBackgroundColor: ['#2563eb', '#059669'],
-                                borderWidth: 0
-                            }]
-                        },
-                        options: {
-                            responsive: true,
-                            maintainAspectRatio: false,
-                            plugins: {
-                                legend: {
-                                    position: 'bottom',
-                                    labels: {
-                                        font: {
-                                            family: "'Outfit', sans-serif"
+                try {
+                    const data = JSON.parse(text);
+                    if (data.success) {
+                        document.getElementById('stat-cpu').innerText = data.cpu;
+                        document.getElementById('stat-mem').innerText = data.memory;
+                        
+                        const ctx = document.getElementById('tokenUsageChart').getContext('2d');
+                        new Chart(ctx, {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['Prompt Tokens', 'Completion Tokens'],
+                                datasets: [{
+                                    data: [data.tokens.prompt, data.tokens.completion],
+                                    backgroundColor: ['#3b82f6', '#10b981'],
+                                    hoverBackgroundColor: ['#2563eb', '#059669'],
+                                    borderWidth: 0
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: false,
+                                plugins: {
+                                    legend: {
+                                        position: 'bottom',
+                                        labels: {
+                                            font: {
+                                                family: "'Outfit', sans-serif"
+                                            }
                                         }
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: 'Recent Token Processing',
+                                        font: {
+                                            family: "'Outfit', sans-serif",
+                                            size: 14,
+                                            weight: '600'
+                                        },
+                                        color: '#4b5563'
                                     }
                                 },
-                                title: {
-                                    display: true,
-                                    text: 'Recent Token Processing',
-                                    font: {
-                                        family: "'Outfit', sans-serif",
-                                        size: 14,
-                                        weight: '600'
-                                    },
-                                    color: '#4b5563'
-                                }
-                            },
-                            cutout: '70%'
-                        }
-                    });
-                } else {
-                    document.getElementById('stats-loading').innerHTML = '<i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> Failed to fetch stats';
+                                cutout: '70%'
+                            }
+                        });
+                    } else {
+                        console.error('Stats Error:', data.error);
+                        document.getElementById('stats-loading').style.display = 'inline';
+                        document.getElementById('stats-loading').innerHTML = '<i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> Failed: ' + data.error;
+                    }
+                } catch (e) {
+                    console.error('Failed to parse JSON response:', text);
+                    document.getElementById('stats-loading').style.display = 'inline';
+                    document.getElementById('stats-loading').innerHTML = '<i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> Invalid response from server';
                 }
             })
             .catch(error => {
-                document.getElementById('stats-loading').innerHTML = '<i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> Failed to fetch stats';
+                console.error('AJAX Error:', error);
+                document.getElementById('stats-loading').style.display = 'inline';
+                document.getElementById('stats-loading').innerHTML = '<i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> Network Error';
             });
     });
     </script>
