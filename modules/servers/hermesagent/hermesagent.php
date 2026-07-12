@@ -408,6 +408,8 @@ function hermesagent_CreateAccount($params) {
         // Generate config.yaml
         $yamlContent = <<<YAML
 model: "{$llmProvider}/{$modelName}"
+dashboard:
+  show_token_analytics: true
 tool_loop_guardrails:
   warnings_enabled: true
   hard_stop_enabled: true
