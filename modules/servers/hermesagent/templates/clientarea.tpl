@@ -578,14 +578,19 @@
     <script>
     document.addEventListener('DOMContentLoaded', function() {
         const ctx = document.getElementById('tokenUsageChart').getContext('2d');
+        const promptTokens = {$stat_prompt_tokens|default:0};
+        const completionTokens = {$stat_completion_tokens|default:0};
+        
+        const hasData = (promptTokens > 0 || completionTokens > 0);
+        
         new Chart(ctx, {
             type: 'doughnut',
             data: {
-                labels: ['Prompt Tokens', 'Completion Tokens'],
+                labels: hasData ? ['Prompt Tokens', 'Completion Tokens'] : ['No Data Yet'],
                 datasets: [{
-                    data: [{$stat_prompt_tokens}, {$stat_completion_tokens}],
-                    backgroundColor: ['#3b82f6', '#10b981'],
-                    hoverBackgroundColor: ['#2563eb', '#059669'],
+                    data: hasData ? [promptTokens, completionTokens] : [1],
+                    backgroundColor: hasData ? ['#3b82f6', '#10b981'] : ['#e5e7eb'],
+                    hoverBackgroundColor: hasData ? ['#2563eb', '#059669'] : ['#d1d5db'],
                     borderWidth: 0
                 }]
             },
