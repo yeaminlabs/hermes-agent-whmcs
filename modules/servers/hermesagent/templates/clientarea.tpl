@@ -591,6 +591,11 @@
         <div style="position: relative; height: 250px; width: 100%;">
             <canvas id="tokenUsageChart"></canvas>
         </div>
+        
+        <div style="margin-top: 15px; padding: 15px; background: #f3f4f6; border-radius: 8px; text-align: center; font-size: 13px; color: #374151;">
+            <div style="margin-bottom: 8px;"><strong>Model Filtered:</strong> <code style="color: #059669; background: #d1fae5; padding: 2px 6px; border-radius: 4px;">nvidia.nemotron-nano-3-30b</code></div>
+            <div><strong>Input Tokens:</strong> <span style="color: #3b82f6; font-weight: bold;">{$stat_prompt_tokens|number_format|default:0}</span> &nbsp;|&nbsp; <strong>Output Tokens:</strong> <span style="color: #10b981; font-weight: bold;">{$stat_completion_tokens|number_format|default:0}</span></div>
+        </div>
     </div>
     
     <script>
