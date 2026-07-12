@@ -433,6 +433,16 @@
         </div>
     {/if}
 
+    <div style="background: #e6ffed; border: 1px solid #76e38c; border-radius: 8px; padding: 20px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 15px;">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/2/21/Nvidia_logo.svg" alt="Nvidia Logo" style="width: 80px; flex-shrink: 0; margin-top: 5px;">
+        <div>
+            <h4 style="margin: 0 0 10px 0; color: #1e4620; font-size: 16px;">Powered by Nvidia Nemotron</h4>
+            <p style="margin: 0; color: #24592a; font-size: 14px; line-height: 1.5;">
+                This agent is powered by <a href="https://research.nvidia.com/labs/nemotron/Nemotron-3/" target="_blank" style="color: #0366d6; font-weight: bold; text-decoration: underline;">Nvidia Nemotron-3</a> technology. You are exclusively allowed to use the model <strong><code>nvidia.nemotron-nano-3-30b</code></strong> for your agentic work. Tokens are already supplied up to <strong>1.2 Billion (input and output combined) for the first 15 days</strong>. This is enough to run an agency and do minimal to medium level tasks all around the day for a month! API usage depends on how hard the task is. All you have to do is switch to the <strong><code>nvidia.nemotron-nano-3-30b</code></strong> model and it will work instantly.
+            </p>
+        </div>
+    </div>
+
     <div class="hermes-grid">
         <!-- Dashboard Credentials Card -->
         <div class="hermes-card">
