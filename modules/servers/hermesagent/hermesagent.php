@@ -1168,6 +1168,14 @@ function hermesagent_ClientArea($params) {
         }
     }
     
+    $createdAtTime = strtotime($record->created_at);
+    $expiryTime = $createdAtTime + (15 * 86400);
+    $daysRemaining = max(0, ceil(($expiryTime - time()) / 86400));
+    
+    $totalUsed = intval($promptTokens) + intval($completionTokens);
+    $tokenLimit = 1200000000;
+    $percentUsed = min(100, ($totalUsed / $tokenLimit) * 100);
+
     return [
         'templatefile' => 'templates/clientarea',
         'vars' => [
@@ -1184,7 +1192,12 @@ function hermesagent_ClientArea($params) {
             'stat_cpu' => $cpu,
             'stat_mem' => $mem,
             'stat_prompt_tokens' => $promptTokens,
-            'stat_completion_tokens' => $completionTokens
+            'stat_completion_tokens' => $completionTokens,
+            'created_at' => $record->created_at,
+            'days_remaining' => $daysRemaining,
+            'total_used' => $totalUsed,
+            'token_limit' => $tokenLimit,
+            'percent_used' => $percentUsed
         ]
     ];
 }

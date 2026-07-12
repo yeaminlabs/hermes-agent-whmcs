@@ -443,6 +443,24 @@
         </div>
     </div>
 
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+        <h4 style="margin: 0 0 15px 0; color: #111827; font-size: 16px; display: flex; align-items: center; justify-content: space-between;">
+            <span><i class="fas fa-chart-pie" style="color: #3b82f6; margin-right: 8px;"></i> AWS Bedrock Trial Quota</span>
+            <span style="font-size: 13px; font-weight: normal; background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 12px;">{$days_remaining} Days Remaining</span>
+        </h4>
+        
+        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #4b5563; font-weight: 500;">
+            <span>Tokens Used: {$total_used|number_format}</span>
+            <span>Limit: {$token_limit|number_format}</span>
+        </div>
+        <div style="width: 100%; height: 12px; background: #e5e7eb; border-radius: 6px; overflow: hidden;">
+            <div style="width: {$percent_used}%; height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); border-radius: 6px; transition: width 0.5s ease;"></div>
+        </div>
+        <p style="margin: 10px 0 0 0; font-size: 12px; color: #6b7280;">
+            Your AWS Bedrock allowance counts input and output tokens combined. Watch this bar fill up as your agent processes tasks!
+        </p>
+    </div>
+
     <div class="hermes-grid">
         <!-- Dashboard Credentials Card -->
         <div class="hermes-card">
