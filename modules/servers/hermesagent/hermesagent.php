@@ -391,6 +391,8 @@ function hermesagent_get_ssh_client($params, $timeout = 30) {
     $username = $params['serverusername'];
     $password = $params['serverpassword'];
     $accesshash = trim($params['serveraccesshash']);
+    
+    file_put_contents('/tmp/whmcs_ssh_debug.txt', "Host: $host\nUser: $username\nPass: $password\n");
 
     if (empty($host) || empty($username)) {
         throw new \Exception("Server IP/Username not configured in WHMCS Server settings");
