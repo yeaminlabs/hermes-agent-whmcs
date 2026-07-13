@@ -227,9 +227,9 @@ function hermesagent_generate_random_password($length = 16) {
  * Get LiteLLM gateway URL and master key from product config.
  */
 function hermesagent_litellm_config($params) {
-    $url = hermesagent_resolve_param($params, 'configoption11', 'LiteLLM Gateway URL', 'http://46.62.205.66:4000');
-    $key = hermesagent_resolve_param($params, 'configoption12', 'LiteLLM Master Key', '');
-    $model = hermesagent_resolve_param($params, 'configoption13', 'Free Tier Default Model', 'claude-haiku');
+    $url = hermesagent_resolve_param($params, 'configoption11', 'LiteLLM Gateway URL', 'https://ai-proxy.snbdhost.com');
+    $key = hermesagent_resolve_param($params, 'configoption12', 'LiteLLM Master Key', 'sk-snbdhost-master-key-2026');
+    $model = hermesagent_resolve_param($params, 'configoption13', 'Free Tier Default Model', 'mistral.voxtral-mini-3b-2507');
     return [
         'url'   => rtrim($url, '/'),
         'key'   => $key,
