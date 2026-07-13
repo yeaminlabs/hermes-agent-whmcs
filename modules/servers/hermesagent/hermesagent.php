@@ -39,28 +39,12 @@ function hermesagent_ConfigOptions() {
             'FriendlyName' => 'LLM Provider',
             'Type' => 'dropdown',
             'Options' => [
-                'free-tier'   => 'SNBD Free Tier (via LiteLLM Gateway — no key needed)',
-                'nous_portal' => 'Nous Portal (recommended — models + tools in one)',
-                'openrouter'  => 'OpenRouter',
-                'openai'      => 'OpenAI',
-                'anthropic'   => 'Anthropic',
-                'custom'      => 'Custom OpenAI-compatible endpoint',
+                'free-tier'   => 'SNBD API (NO API NEEDED)',
             ],
             'Default' => 'free-tier',
-            'Description' => 'Which inference provider Hermes should use. "Free Tier" routes through SNBD LiteLLM Gateway — no customer API key needed.',
+            'Description' => 'Powered by api-proxy.snbdhost.com. You can add your own provider API keys later from the Client Area.',
         ],
-        'provider_api_key' => [
-            'FriendlyName' => 'Provider API Key',
-            'Type' => 'password',
-            'Size' => '48',
-            'Description' => 'Your own API key for the selected provider. NOT required when using SNBD Free Tier — the LiteLLM Gateway handles routing automatically.',
-        ],
-        'custom_endpoint_url' => [
-            'FriendlyName' => 'Custom Endpoint URL',
-            'Type' => 'text',
-            'Size' => '48',
-            'Description' => 'Only used when "Custom OpenAI-compatible endpoint" is selected.',
-        ],
+
         'model_name' => [
             'FriendlyName' => 'Model',
             'Type' => 'text',
@@ -125,8 +109,8 @@ function hermesagent_ConfigOptions() {
             'FriendlyName' => 'Free Tier Default Model',
             'Type' => 'text',
             'Size' => '32',
-            'Default' => 'claude-haiku',
-            'Description' => 'Model name as configured in LiteLLM config.yaml (e.g. claude-haiku, llama-3-8b).',
+            'Default' => 'mistral.voxtral-mini-3b-2507',
+            'Description' => 'Model name as configured in LiteLLM config.yaml (e.g. mistral.voxtral-mini-3b-2507).',
         ],
     ];
 }
