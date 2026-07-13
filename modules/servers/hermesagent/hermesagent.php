@@ -587,10 +587,12 @@ function hermesagent_CreateAccount($params) {
 
             if (!empty($litellmKey) && !empty($litellmCfg['url'])) {
                 $envLines[] = "OPENAI_API_BASE=" . $litellmCfg['url'] . "/v1";
+                $envLines[] = "OPENAI_BASE_URL=" . $litellmCfg['url'] . "/v1";
                 $envLines[] = "OPENAI_API_KEY=" . $litellmKey;
             } else {
                 // Last resort fallback — master key so agent at least boots
                 $envLines[] = "OPENAI_API_BASE=" . ($litellmCfg['url'] ?? 'https://ai-proxy.snbdhost.com') . "/v1";
+                $envLines[] = "OPENAI_BASE_URL=" . ($litellmCfg['url'] ?? 'https://ai-proxy.snbdhost.com') . "/v1";
                 $envLines[] = "OPENAI_API_KEY=" . ($litellmCfg['key'] ?? '');
                 logModuleCall('hermesagent', 'CreateAccount_LiteLLM_Fallback_MasterKey', $serviceid, "Used master key as fallback for service $serviceid");
             }
@@ -632,13 +634,9 @@ function hermesagent_CreateAccount($params) {
         
         // Generate config.yaml
         if ($isFreeTier) {
-            // Route through openai to hit our custom proxy natively
+            // Route through openai-api to hit our custom proxy natively
             $yamlContent = <<<YAML
-model: "{$litellmModel}"
-model_list:
-  - model_name: "{$litellmModel}"
-    litellm_params:
-      model: "openai/{$litellmModel}"
+model: "openai-api/{$litellmModel}"
 dashboard:
   show_token_analytics: true
 tool_loop_guardrails:
