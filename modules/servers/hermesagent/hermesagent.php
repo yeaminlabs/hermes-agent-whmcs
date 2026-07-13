@@ -39,20 +39,21 @@ function hermesagent_ConfigOptions() {
             'FriendlyName' => 'LLM Provider',
             'Type' => 'dropdown',
             'Options' => [
+                'free-tier'   => 'SNBD Free Tier (via LiteLLM Gateway — no key needed)',
                 'nous_portal' => 'Nous Portal (recommended — models + tools in one)',
                 'openrouter'  => 'OpenRouter',
                 'openai'      => 'OpenAI',
                 'anthropic'   => 'Anthropic',
                 'custom'      => 'Custom OpenAI-compatible endpoint',
             ],
-            'Default' => 'nous_portal',
-            'Description' => 'Which inference provider Hermes should use.',
+            'Default' => 'free-tier',
+            'Description' => 'Which inference provider Hermes should use. "Free Tier" routes through SNBD LiteLLM Gateway — no customer API key needed.',
         ],
         'provider_api_key' => [
             'FriendlyName' => 'Provider API Key',
             'Type' => 'password',
             'Size' => '48',
-            'Description' => 'API key/token for the selected provider (client-supplied, stored encrypted).',
+            'Description' => 'API key/token for the selected provider (client-supplied, stored encrypted). Ignored for Free Tier.',
         ],
         'custom_endpoint_url' => [
             'FriendlyName' => 'Custom Endpoint URL',
@@ -106,6 +107,27 @@ function hermesagent_ConfigOptions() {
             'Default' => 'latest',
             'Description' => 'nousresearch/hermes-agent tag to deploy. Leave as latest unless pinning.',
         ],
+        'litellm_gateway_url' => [
+            'FriendlyName' => 'LiteLLM Gateway URL',
+            'Type' => 'text',
+            'Size' => '48',
+            'Default' => 'http://46.62.205.66:4000',
+            'Description' => 'Base URL of the central LiteLLM proxy. Used when LLM Provider is "Free Tier".',
+        ],
+        'litellm_master_key' => [
+            'FriendlyName' => 'LiteLLM Master Key',
+            'Type' => 'password',
+            'Size' => '48',
+            'Default' => '',
+            'Description' => 'LiteLLM master key for creating/deleting virtual customer keys.',
+        ],
+        'free_tier_model' => [
+            'FriendlyName' => 'Free Tier Default Model',
+            'Type' => 'text',
+            'Size' => '32',
+            'Default' => 'claude-haiku',
+            'Description' => 'Model name as configured in LiteLLM config.yaml (e.g. claude-haiku, llama-3-8b).',
+        ],
     ];
 }
 
@@ -126,9 +148,23 @@ function hermesagent_setup_database() {
                     $table->string('dashboard_secret');
                     $table->string('api_key');
                     $table->string('status')->default('Pending');
+                    $table->string('litellm_key_id', 64)->nullable();
+                    $table->string('litellm_key_value', 128)->nullable();
                     $table->timestamps();
                 }
             );
+        } else {
+            // Migration: add LiteLLM columns if missing
+            if (!Capsule::schema()->hasColumn('mod_hermesagent_instances', 'litellm_key_id')) {
+                Capsule::schema()->table('mod_hermesagent_instances', function ($table) {
+                    $table->string('litellm_key_id', 64)->nullable();
+                });
+            }
+            if (!Capsule::schema()->hasColumn('mod_hermesagent_instances', 'litellm_key_value')) {
+                Capsule::schema()->table('mod_hermesagent_instances', function ($table) {
+                    $table->string('litellm_key_value', 128)->nullable();
+                });
+            }
         }
     } catch (\Exception $e) {
         logActivity("HermesAgent database setup failed: " . $e->getMessage());
@@ -179,6 +215,133 @@ function hermesagent_generate_random_password($length = 16) {
         $password .= $chars[random_int(0, $max)];
     }
     return $password;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  LiteLLM Gateway Helpers
+//  Creates/manages virtual API keys on the central LiteLLM proxy
+//  so AWS Bedrock credentials NEVER enter customer containers.
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * Get LiteLLM gateway URL and master key from product config.
+ */
+function hermesagent_litellm_config($params) {
+    $url = hermesagent_resolve_param($params, 'configoption11', 'LiteLLM Gateway URL', 'http://46.62.205.66:4000');
+    $key = hermesagent_resolve_param($params, 'configoption12', 'LiteLLM Master Key', '');
+    $model = hermesagent_resolve_param($params, 'configoption13', 'Free Tier Default Model', 'claude-haiku');
+    return [
+        'url'   => rtrim($url, '/'),
+        'key'   => $key,
+        'model' => $model,
+    ];
+}
+
+/**
+ * Create a LiteLLM virtual API key for a customer.
+ * Returns ['key_id' => ..., 'key_value' => ...] or throws.
+ */
+function hermesagent_litellm_create_key($gatewayUrl, $masterKey, $serviceId, $model, $maxBudget = 5.0) {
+    $payload = json_encode([
+        'models'        => [$model],
+        'max_budget'    => $maxBudget,
+        'metadata'      => [
+            'service_id' => (string)$serviceId,
+            'created_by' => 'whmcs-hermesagent',
+        ],
+        'max_parallel_requests' => 10,
+        'tpm_limit'     => 100000,   // tokens per minute
+        'rpm_limit'     => 60,       // requests per minute
+        'duration'      => null,     // never expire (managed by lifecycle)
+    ]);
+
+    $ch = curl_init($gatewayUrl . '/key/generate');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $masterKey,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 15,
+        CURLOPT_CONNECTTIMEOUT => 5,
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+
+    if ($error) {
+        throw new \Exception("LiteLLM connection failed: $error");
+    }
+    if ($httpCode !== 200) {
+        throw new \Exception("LiteLLM /key/generate returned HTTP $httpCode: " . substr($response, 0, 500));
+    }
+
+    $data = json_decode($response, true);
+    if (!$data || empty($data['key']) || empty($data['key_id'])) {
+        throw new \Exception("LiteLLM /key/generate returned unexpected response: " . substr($response, 0, 500));
+    }
+
+    return [
+        'key_id'    => $data['key_id'],
+        'key_value' => $data['key'],
+    ];
+}
+
+/**
+ * Update a LiteLLM virtual key (suspend/unsuspend/change limits).
+ */
+function hermesagent_litellm_update_key($gatewayUrl, $masterKey, $keyId, $isActive) {
+    $payload = json_encode(['key_id' => $keyId, 'is_active' => $isActive]);
+
+    $ch = curl_init($gatewayUrl . '/key/update');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $masterKey,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_CONNECTTIMEOUT => 5,
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode !== 200) {
+        logModuleCall('hermesagent', 'litellm_update_key', $keyId, "HTTP $httpCode: " . substr($response, 0, 500));
+    }
+}
+
+/**
+ * Delete a LiteLLM virtual key.
+ */
+function hermesagent_litellm_delete_key($gatewayUrl, $masterKey, $keyId) {
+    $payload = json_encode(['keys' => [$keyId]]);
+
+    $ch = curl_init($gatewayUrl . '/key/delete');
+    curl_setopt_array($ch, [
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $masterKey,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_CONNECTTIMEOUT => 5,
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode !== 200) {
+        logModuleCall('hermesagent', 'litellm_delete_key', $keyId, "HTTP $httpCode: " . substr($response, 0, 500));
+    }
 }
 
 /**
@@ -314,6 +477,8 @@ function hermesagent_CreateAccount($params) {
     $enableApiServer = hermesagent_resolve_param($params, 'configoption8', 'Enable OpenAI-Compatible API', 'no');
     $resourceTier = hermesagent_resolve_param($params, 'configoption9', 'Resource Tier', 'Standard (2 vCPU / 2GB)');
     $dockerImageTag = hermesagent_resolve_param($params, 'configoption10', 'Image Version', 'latest');
+    $litellmCfg = hermesagent_litellm_config($params);
+    $litellmModel = $litellmCfg['model'];
     
     // Check if record exists
     $record = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceid)->first();
@@ -329,7 +494,7 @@ function hermesagent_CreateAccount($params) {
         $dashboardSecret = bin2hex(random_bytes(16));
         $apiKey = bin2hex(random_bytes(16));
         
-        Capsule::table('mod_hermesagent_instances')->insert([
+        $insertData = [
             'serviceid' => $serviceid,
             'dash_port' => $dashPort,
             'api_port' => $apiPort,
@@ -340,7 +505,23 @@ function hermesagent_CreateAccount($params) {
             'status' => 'Pending',
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s')
-        ]);
+        ];
+        
+        // If Free Tier, create LiteLLM virtual key now and store it
+        $isFreeTier = ($llmProvider === 'free-tier' || $llmProvider === 'bedrock');
+        if ($isFreeTier && !empty($litellmCfg['key'])) {
+            try {
+                $ltKey = hermesagent_litellm_create_key($litellmCfg['url'], $litellmCfg['key'], $serviceid, $litellmModel);
+                $insertData['litellm_key_id'] = $ltKey['key_id'];
+                $insertData['litellm_key_value'] = $ltKey['key_value'];
+                logModuleCall('hermesagent', 'CreateAccount_LiteLLM_Key', $serviceid, "LiteLLM key created: {$ltKey['key_id']}");
+            } catch (\Exception $e) {
+                logModuleCall('hermesagent', 'CreateAccount_LiteLLM_Key_Failed', $serviceid, $e->getMessage());
+                // Non-fatal: provisioning continues; admin can investigate
+            }
+        }
+        
+        Capsule::table('mod_hermesagent_instances')->insert($insertData);
     }
     
     try {
@@ -366,10 +547,22 @@ function hermesagent_CreateAccount($params) {
             "HERMES_DASHBOARD_BASIC_AUTH_USERNAME=" . $dashboardUsername,
             "HERMES_DASHBOARD_BASIC_AUTH_PASSWORD=" . $dashboardPassword,
             "HERMES_DASHBOARD_BASIC_AUTH_SECRET=" . $dashboardSecret,
-            "AWS_BEARER_TOKEN_BEDROCK=ABSKTWFudGxlQXBpS2V5LTZmdnlvM2o4LWF0LTY1NzcyNzczOTM4NTpDVzRYUzNyMTBvdFVtT29aaXlwQ2djYTEraE9pM29DR1JVNkVsbFRheWFKVUxRbXI5dzRJK0ZBVXhHTT0="
         ];
         
-        if ($llmProvider === 'openrouter') {
+        $isFreeTier = ($llmProvider === 'free-tier' || $llmProvider === 'bedrock');
+        
+        if ($isFreeTier) {
+            // LiteLLM Gateway path: no raw API keys in container
+            // Customer agent points to central LiteLLM proxy
+            $litellmKey = $record->litellm_key_value ?? $insertData['litellm_key_value'] ?? '';
+            if (!empty($litellmKey) && !empty($litellmCfg['url'])) {
+                $envLines[] = "OPENAI_API_BASE=" . $litellmCfg['url'] . "/v1";
+                $envLines[] = "OPENAI_API_KEY=" . $litellmKey;
+            } else {
+                // Fallback: still better than hardcoded token
+                $envLines[] = "# LiteLLM key not available — check module log";
+            }
+        } elseif ($llmProvider === 'openrouter') {
             $envLines[] = "OPENROUTER_API_KEY=" . $providerApiKey;
         } elseif ($llmProvider === 'openai') {
             $envLines[] = "OPENAI_API_KEY=" . $providerApiKey;
@@ -406,7 +599,22 @@ function hermesagent_CreateAccount($params) {
         $envContent = implode("\n", $envLines) . "\n";
         
         // Generate config.yaml
-        if ($llmProvider === 'bedrock') {
+        if ($isFreeTier) {
+            // Use LiteLLM model name (no provider prefix — LiteLLM handles routing)
+            $yamlContent = <<<YAML
+model: "{$litellmModel}"
+dashboard:
+  show_token_analytics: true
+tool_loop_guardrails:
+  warnings_enabled: true
+  hard_stop_enabled: true
+  hard_stop_after:
+    exact_failure: 5
+    idempotent_no_progress: 5
+terminal:
+  backend: docker
+YAML;
+        } elseif ($llmProvider === 'custom') {
             $yamlContent = <<<YAML
 model: "{$modelName}"
 model_list:
@@ -576,6 +784,19 @@ function hermesagent_SuspendAccount($params) {
     try {
         $ssh = hermesagent_get_ssh_client($params);
         
+        // Also suspend LiteLLM virtual key if present
+        $record = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceid)->first();
+        if ($record && !empty($record->litellm_key_id)) {
+            try {
+                $ltCfg = hermesagent_litellm_config($params);
+                if (!empty($ltCfg['key'])) {
+                    hermesagent_litellm_update_key($ltCfg['url'], $ltCfg['key'], $record->litellm_key_id, false);
+                }
+            } catch (\Exception $e) {
+                logModuleCall('hermesagent', 'SuspendAccount_LiteLLM', $serviceid, $e->getMessage());
+            }
+        }
+        
         $hostname = "hermes.deltadns.xyz";
         $enableApiServer = hermesagent_resolve_param($params, 'configoption8', 'Enable OpenAI-Compatible API', 'no');
         $apiEnabledVal = ($enableApiServer === 'yes' || $enableApiServer === 'on' || $enableApiServer === '1');
@@ -627,6 +848,18 @@ function hermesagent_UnsuspendAccount($params) {
             return "Deployment record not found in database.";
         }
         
+        // Also reactivate LiteLLM virtual key if present
+        if (!empty($record->litellm_key_id)) {
+            try {
+                $ltCfg = hermesagent_litellm_config($params);
+                if (!empty($ltCfg['key'])) {
+                    hermesagent_litellm_update_key($ltCfg['url'], $ltCfg['key'], $record->litellm_key_id, true);
+                }
+            } catch (\Exception $e) {
+                logModuleCall('hermesagent', 'UnsuspendAccount_LiteLLM', $serviceid, $e->getMessage());
+            }
+        }
+        
         $dashPort = $record->dash_port;
         $apiPort = $record->api_port;
         $hostname = "hermes.deltadns.xyz";
@@ -670,6 +903,19 @@ function hermesagent_TerminateAccount($params) {
     $serviceid = intval($params['serviceid']);
     
     try {
+        // First: delete LiteLLM virtual key if present (before SSH, in case VPS is gone)
+        $record = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceid)->first();
+        if ($record && !empty($record->litellm_key_id)) {
+            try {
+                $ltCfg = hermesagent_litellm_config($params);
+                if (!empty($ltCfg['key'])) {
+                    hermesagent_litellm_delete_key($ltCfg['url'], $ltCfg['key'], $record->litellm_key_id);
+                }
+            } catch (\Exception $e) {
+                logModuleCall('hermesagent', 'TerminateAccount_LiteLLM', $serviceid, $e->getMessage());
+            }
+        }
+        
         $ssh = hermesagent_get_ssh_client($params);
         
         // Steps: 

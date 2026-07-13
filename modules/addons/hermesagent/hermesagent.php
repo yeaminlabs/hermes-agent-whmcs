@@ -169,6 +169,7 @@ function hermesagent_addon_setup_config_options($productId) {
             'name' => 'LLM Provider',
             'type' => 1, // Dropdown
             'subs' => [
+                'free-tier|SNBD Free Tier (via LiteLLM — no key needed)',
                 'bedrock|AI Cloud Network (Mistral Models)'
             ]
         ],

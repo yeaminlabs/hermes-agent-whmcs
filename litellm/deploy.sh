@@ -205,6 +205,6 @@ echo ""
 echo "  To create a customer virtual key:"
 echo "    curl -X POST http://localhost:4000/key/generate \\"
 echo "      -H \"Authorization: Bearer sk-litellm-master-...\" \\"
-echo '      -H "Content-Type: application/json" \'
-echo '      -d \'{"models": ["claude-haiku"], "max_budget": 5.0, "metadata": {"customer": "name"}}\''
+echo "      -H \"Content-Type: application/json\" \\"
+echo '      -d '"'"'{"models": ["claude-haiku"], "max_budget": 5.0, "metadata": {"customer": "name"}}'"'"''
 echo "═══════════════════════════════════════════════════════════"
