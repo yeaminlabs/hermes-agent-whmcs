@@ -159,7 +159,11 @@ function hermesagent_addon_setup_config_options($productId) {
     $openRouterModels = [];
     
     $modelSubs = [
-        'mistral.voxtral-mini-3b-2507|Mistral Voxtral Mini 3B (Free)'
+        'mistral.voxtral-mini-3b-2507|Mistral Voxtral Mini 3B (Free)',
+        'claude-haiku|Claude 3.5 Haiku (LiteLLM Free Tier)',
+        'llama-3-8b|Llama 3.2 8B (LiteLLM Free Tier)',
+        'mistral-7b|Mistral 7B (LiteLLM Free Tier)',
+        'claude-sonnet|Claude 3.5 Sonnet (LiteLLM — Paid)'
     ];
 
 

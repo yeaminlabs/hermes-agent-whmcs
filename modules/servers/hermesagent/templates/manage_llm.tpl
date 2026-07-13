@@ -80,8 +80,13 @@
             <h3 class="section-title"><i class="fas fa-brain" style="color: #CC0000;"></i> Active Model</h3>
             <div class="form-group">
                 <label class="form-label">Model String</label>
+                {if $is_free_tier}
+                <input type="text" name="active_model" class="form-control-custom" value="{$active_model}" placeholder="e.g. claude-haiku, llama-3-8b, mistral-7b">
+                <small style="color: #9ca3af; display: block; margin-top: 5px;">Model as configured in the SNBD LiteLLM Gateway. Leave as default unless you know what you're doing.</small>
+                {else}
                 <input type="text" name="active_model" class="form-control-custom" value="{$active_model}" placeholder="e.g. openrouter/meta-llama/llama-3-70b-instruct">
                 <small style="color: #9ca3af; display: block; margin-top: 5px;">This specifies exactly which model your agent should use.</small>
+                {/if}
             </div>
         </div>
 

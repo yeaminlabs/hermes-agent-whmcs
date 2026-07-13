@@ -1293,6 +1293,14 @@ function hermesagent_manage_llm($params) {
                 $vars['active_model'] = $matches[1];
             }
         }
+        
+        // If model is still empty and we're on free tier, show the configured default
+        if (empty($vars['active_model']) && $isFreeTier) {
+            $ltCfg = hermesagent_litellm_config($params);
+            if (!empty($ltCfg['model'])) {
+                $vars['active_model'] = $ltCfg['model'] . ' (auto)';
+            }
+        }
     } catch (\Exception $e) {
         $vars['error'] = "Could not fetch live configuration: " . $e->getMessage();
     }
