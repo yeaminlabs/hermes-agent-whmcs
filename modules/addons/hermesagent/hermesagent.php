@@ -159,7 +159,7 @@ function hermesagent_addon_setup_config_options($productId) {
     $openRouterModels = [];
     
     $modelSubs = [
-        'nvidia.nemotron-nano-3-30b|Nvidia Nemotron Nano 3 30B (Free)'
+        'mistral.voxtral-mini-3b-2507|Mistral Voxtral Mini 3B (Free)'
     ];
 
 
@@ -169,7 +169,7 @@ function hermesagent_addon_setup_config_options($productId) {
             'name' => 'LLM Provider',
             'type' => 1, // Dropdown
             'subs' => [
-                'bedrock|Amazon Bedrock (Nvidia Models)'
+                'bedrock|AI Cloud Network (Mistral Models)'
             ]
         ],
         [

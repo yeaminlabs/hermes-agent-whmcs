@@ -1148,7 +1148,7 @@ function hermesagent_ClientArea($params) {
                 }
             }
             
-            // 2. Fetch Token Usage (Querying internal SQLite directly for Nemotron)
+            // 2. Fetch Token Usage (Querying internal SQLite directly for Mistral/Voxtral)
             $pyScript = "import sqlite3, glob\n"
                       . "p=0; c=0\n"
                       . "for db in glob.glob('/opt/data/*.db') + glob.glob('/opt/data/*.sqlite*'):\n"
@@ -1162,12 +1162,14 @@ function hermesagent_ClientArea($params) {
                       . "                if 'prompt_tokens' in cols and 'completion_tokens' in cols and 'model' in cols:\n"
                       . "                    cur.execute('SELECT prompt_tokens, completion_tokens, model FROM ' + t)\n"
                       . "                    for row in cur.fetchall():\n"
-                      . "                        if 'nemotron' in str(row[2]).lower():\n"
+                      . "                        m_name = str(row[2]).lower()\n"
+                      . "                        if 'mistral' in m_name or 'voxtral' in m_name:\n"
                       . "                            p += int(row[0] or 0); c += int(row[1] or 0)\n"
                       . "                elif 'input_tokens' in cols and 'output_tokens' in cols and 'model' in cols:\n"
                       . "                    cur.execute('SELECT input_tokens, output_tokens, model FROM ' + t)\n"
                       . "                    for row in cur.fetchall():\n"
-                      . "                        if 'nemotron' in str(row[2]).lower():\n"
+                      . "                        m_name = str(row[2]).lower()\n"
+                      . "                        if 'mistral' in m_name or 'voxtral' in m_name:\n"
                       . "                            p += int(row[0] or 0); c += int(row[1] or 0)\n"
                       . "            except: pass\n"
                       . "    except: pass\n"
@@ -1193,11 +1195,10 @@ function hermesagent_ClientArea($params) {
     }
     
     $createdAtTime = strtotime($record->created_at);
-    $expiryTime = $createdAtTime + (15 * 86400);
-    $daysRemaining = max(0, ceil(($expiryTime - time()) / 86400));
+    $daysRemaining = 'Lifetime';
     
     $totalUsed = intval($promptTokens) + intval($completionTokens);
-    $tokenLimit = 1200000000;
+    $tokenLimit = 10000000;
     $percentUsed = min(100, ($totalUsed / $tokenLimit) * 100);
 
     return [

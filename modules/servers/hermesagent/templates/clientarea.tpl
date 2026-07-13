@@ -433,20 +433,20 @@
         </div>
     {/if}
 
-    <div style="background: #e6ffed; border: 1px solid #76e38c; border-radius: 8px; padding: 20px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 15px;">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/2/21/Nvidia_logo.svg" alt="Nvidia Logo" style="width: 80px; flex-shrink: 0; margin-top: 5px;">
+    <div style="background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: 20px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 15px;">
+        <div style="font-size: 40px; color: #f97316; margin-top: 5px;"><i class="fas fa-robot"></i></div>
         <div>
-            <h4 style="margin: 0 0 10px 0; color: #1e4620; font-size: 16px;">Powered by Nvidia Nemotron</h4>
-            <p style="margin: 0; color: #24592a; font-size: 14px; line-height: 1.5;">
-                This agent is powered by <a href="https://research.nvidia.com/labs/nemotron/Nemotron-3/" target="_blank" style="color: #0366d6; font-weight: bold; text-decoration: underline;">Nvidia Nemotron-3</a> technology. You are exclusively allowed to use the model <strong><code>nvidia.nemotron-nano-3-30b</code></strong> for your agentic work. Tokens are already supplied up to <strong>1.2 Billion (input and output combined) for the first 15 days</strong>. This is enough to run an agency and do minimal to medium level tasks all around the day for a month! API usage depends on how hard the task is. All you have to do is switch to the <strong><code>nvidia.nemotron-nano-3-30b</code></strong> model and it will work instantly.
+            <h4 style="margin: 0 0 10px 0; color: #9a3412; font-size: 16px;">Powered by Mistral AI</h4>
+            <p style="margin: 0; color: #9a3412; font-size: 14px; line-height: 1.5;">
+                This agent is powered by <strong>Mistral</strong> technology. You are exclusively allowed to use the model <strong><code>mistral.voxtral-mini-3b-2507</code></strong> for your agentic work. You are getting free Mistral Models up to <strong>10M token usage for free</strong>, with a massive <strong>32K token context window free for lifetime!!</strong> API usage depends on how hard the task is. All you have to do is switch to the <strong><code>mistral.voxtral-mini-3b-2507</code></strong> model and it will work instantly.
             </p>
         </div>
     </div>
 
     <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
         <h4 style="margin: 0 0 15px 0; color: #111827; font-size: 16px; display: flex; align-items: center; justify-content: space-between;">
-            <span><i class="fas fa-chart-pie" style="color: #3b82f6; margin-right: 8px;"></i> AWS Bedrock Trial Quota</span>
-            <span style="font-size: 13px; font-weight: normal; background: #fee2e2; color: #991b1b; padding: 4px 10px; border-radius: 12px;">{$days_remaining} Days Remaining</span>
+            <span><i class="fas fa-chart-pie" style="color: #f97316; margin-right: 8px;"></i> Free Mistral Quota</span>
+            <span style="font-size: 13px; font-weight: normal; background: #fef3c7; color: #b45309; padding: 4px 10px; border-radius: 12px;">{$days_remaining} Access</span>
         </h4>
         
         <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #4b5563; font-weight: 500;">
@@ -454,10 +454,10 @@
             <span>Limit: {$token_limit|number_format}</span>
         </div>
         <div style="width: 100%; height: 12px; background: #e5e7eb; border-radius: 6px; overflow: hidden;">
-            <div style="width: {$percent_used}%; height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); border-radius: 6px; transition: width 0.5s ease;"></div>
+            <div style="width: {$percent_used}%; height: 100%; background: linear-gradient(90deg, #f59e0b, #f97316); border-radius: 6px; transition: width 0.5s ease;"></div>
         </div>
         <p style="margin: 10px 0 0 0; font-size: 12px; color: #6b7280;">
-            Your AWS Bedrock allowance counts input and output tokens combined. Watch this bar fill up as your agent processes tasks!
+            Your free allowance counts input and output tokens combined. Watch this bar fill up as your agent processes tasks!
         </p>
     </div>
 
@@ -593,7 +593,7 @@
         </div>
         
         <div style="margin-top: 15px; padding: 15px; background: #f3f4f6; border-radius: 8px; text-align: center; font-size: 13px; color: #374151;">
-            <div style="margin-bottom: 8px;"><strong>Model Filtered:</strong> <code style="color: #059669; background: #d1fae5; padding: 2px 6px; border-radius: 4px;">nvidia.nemotron-nano-3-30b</code></div>
+            <div style="margin-bottom: 8px;"><strong>Model Filtered:</strong> <code style="color: #ea580c; background: #ffedd5; padding: 2px 6px; border-radius: 4px;">mistral.voxtral-mini-3b-2507</code></div>
             <div><strong>Input Tokens:</strong> <span style="color: #3b82f6; font-weight: bold;">{$stat_prompt_tokens|number_format|default:0}</span> &nbsp;|&nbsp; <strong>Output Tokens:</strong> <span style="color: #10b981; font-weight: bold;">{$stat_completion_tokens|number_format|default:0}</span></div>
         </div>
     </div>
