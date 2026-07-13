@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-latest
+    container_name: litellm-proxy
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./config.yaml:/app/config.yaml
+      - ./data:/app/data
+      - ~/.aws:/root/.aws:ro
+    environment:
+      - LITELLM_MASTER_KEY=sk-litellm-master-3VjXMRrqb73t4xnFFNuF1
+      - LITELLM_SALT_KEY=sk-litellm-salt-9e7da0bd27ca6c661e
+      - DATABASE_URL=sqlite:////app/data/litellm.db
+      - STORE_MODEL_IN_DB=True
+      - COOLDOWN=30
+      - MAX_BUDGET=1000
+    env_file:
+      - .env
+    command:
+      - "--port"
+      - "4000"
+      - "--config"
+      - "/app/config.yaml"

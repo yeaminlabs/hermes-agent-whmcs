@@ -1,0 +1,78 @@
+# ═══════════════════════════════════════════════════════════════
+#  LiteLLM Gateway — SNBD Host (AWS Bedrock Backend)
+#  Customers: OPENAI_API_BASE=http://46.62.205.66:4000/v1
+#  Keys stay HERE, never on customer VPS.
+# ═══════════════════════════════════════════════════════════════
+
+general_settings:
+  master_key: "sk-litellm-master-3VjXMRrqb73t4xnFFNuF1"
+  database_url: "sqlite:////app/data/litellm.db"
+  store_model_in_db: True
+  allow_user_auth: False
+
+litellm_settings:
+  drop_params: True
+  set_verbose: False
+  request_timeout: 600
+  num_retries: 2
+  cache: False
+
+model_list:
+  # ── Claude 3.5 Haiku — free-tier workhorse ────────────────
+  - model_name: claude-haiku
+    litellm_params:
+      model: bedrock/us.anthropic.claude-3-5-haiku-20241022-v1:0
+      aws_region_name: us-east-1
+      rpm: 100
+      max_tokens: 8192
+    model_info:
+      mode: completion
+      supports_function_calling: true
+      access_groups: ["free-tier"]
+      description: "Claude 3.5 Haiku via Bedrock — cheapest model"
+
+  # ── Claude 3.5 Sonnet — for paid tier ────────────────────
+  - model_name: claude-sonnet
+    litellm_params:
+      model: bedrock/us.anthropic.claude-3-5-sonnet-20241022-v2:0
+      aws_region_name: us-east-1
+      rpm: 60
+      max_tokens: 8192
+    model_info:
+      mode: completion
+      supports_function_calling: true
+      access_groups: ["paid-tier"]
+      description: "Claude 3.5 Sonnet via Bedrock"
+
+  # ── Llama 3.2 — free-tier fallback ───────────────────────
+  - model_name: llama-3-8b
+    litellm_params:
+      model: bedrock/us.meta.llama3-2-8b-instruct-v1:0
+      aws_region_name: us-east-1
+      rpm: 100
+      max_tokens: 8192
+    model_info:
+      mode: completion
+      access_groups: ["free-tier"]
+      description: "Llama 3.2 8B via Bedrock"
+
+  # ── Mistral 7B — free-tier alternative ───────────────────
+  - model_name: mistral-7b
+    litellm_params:
+      model: bedrock/mistral.mistral-7b-instruct-v0:2
+      aws_region_name: us-east-1
+      rpm: 100
+      max_tokens: 8192
+    model_info:
+      mode: completion
+      access_groups: ["free-tier"]
+      description: "Mistral 7B via Bedrock"
+
+router_settings:
+  routing_strategy: "latency-based"
+  allowed_fails: 3
+  num_retries: 2
+  fallback_strategy: "next-best"
+  redis_host: null
+  redis_port: 6379
+  redis_password: null
