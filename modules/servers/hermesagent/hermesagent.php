@@ -384,7 +384,7 @@ function hermesagent_resolve_param($params, $configKey, $name, $defaultVal = '')
 /**
  * Establish SSH connection using phpseclib compatibility layer.
  */
-function hermesagent_get_ssh_client($params) {
+function hermesagent_get_ssh_client($params, $timeout = 30) {
     $host = $params['serverip'];
     $port = empty($params['serverport']) ? 22 : intval($params['serverport']);
     $username = $params['serverusername'];
@@ -397,8 +397,8 @@ function hermesagent_get_ssh_client($params) {
 
     // Try phpseclib 3
     if (class_exists('\phpseclib3\Net\SSH2')) {
-        $ssh = new \phpseclib3\Net\SSH2($host, $port);
-        $ssh->setTimeout(30);
+        $ssh = new \phpseclib3\Net\SSH2($host, $port, $timeout);
+        $ssh->setTimeout($timeout);
         if (!empty($accesshash)) {
             try {
                 $key = \phpseclib3\Crypt\PublicKeyLoader::load($accesshash, $password ?: false);
@@ -416,8 +416,8 @@ function hermesagent_get_ssh_client($params) {
     } 
     // Try phpseclib 2
     elseif (class_exists('\phpseclib\Net\SSH2')) {
-        $ssh = new \phpseclib\Net\SSH2($host, $port);
-        $ssh->setTimeout(30);
+        $ssh = new \phpseclib\Net\SSH2($host, $port, $timeout);
+        $ssh->setTimeout($timeout);
         if (!empty($accesshash) && class_exists('\phpseclib\Crypt\RSA')) {
             $key = new \phpseclib\Crypt\RSA();
             if (!empty($password)) {
@@ -436,8 +436,8 @@ function hermesagent_get_ssh_client($params) {
     }
     // Try legacy phpseclib 1
     elseif (class_exists('Net_SSH2')) {
-        $ssh = new \Net_SSH2($host, $port);
-        $ssh->setTimeout(30);
+        $ssh = new \Net_SSH2($host, $port, $timeout);
+        $ssh->setTimeout($timeout);
         if (!empty($accesshash) && class_exists('Crypt_RSA')) {
             $key = new \Crypt_RSA();
             if (!empty($password)) {
@@ -1438,7 +1438,8 @@ function hermesagent_ClientArea($params) {
     
     if ($record->status === 'Active') {
         try {
-            $ssh = hermesagent_get_ssh_client($params);
+            // Use a short 3-second timeout for ClientArea to prevent WHMCS hanging if server is down
+            $ssh = hermesagent_get_ssh_client($params, 3);
             
             // 1. Fetch CPU and Mem Usage
             $statsCmd = "docker stats \"hermes-{$serviceid}\" --no-stream --format \"{{.CPUPerc}}|{{.MemUsage}}\" 2>/dev/null";
