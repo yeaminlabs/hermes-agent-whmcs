@@ -524,6 +524,26 @@ function hermesagent_CreateAccount($params) {
         Capsule::table('mod_hermesagent_instances')->insert($insertData);
     }
     
+    // Upgrade existing records: create LiteLLM key if missing
+    $isFreeTier = ($llmProvider === 'free-tier' || $llmProvider === 'bedrock');
+    if ($isFreeTier && $record && empty($record->litellm_key_id) && !empty($litellmCfg['key'])) {
+        try {
+            $ltKey = hermesagent_litellm_create_key($litellmCfg['url'], $litellmCfg['key'], $serviceid, $litellmModel);
+            Capsule::table('mod_hermesagent_instances')
+                ->where('serviceid', $serviceid)
+                ->update([
+                    'litellm_key_id' => $ltKey['key_id'],
+                    'litellm_key_value' => $ltKey['key_value'],
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+            $record->litellm_key_id = $ltKey['key_id'];
+            $record->litellm_key_value = $ltKey['key_value'];
+            logModuleCall('hermesagent', 'Redeploy_LiteLLM_Key', $serviceid, "LiteLLM key created for existing record: {$ltKey['key_id']}");
+        } catch (\Exception $e) {
+            logModuleCall('hermesagent', 'Redeploy_LiteLLM_Key_Failed', $serviceid, $e->getMessage());
+        }
+    }
+    
     try {
         $ssh = hermesagent_get_ssh_client($params);
         
