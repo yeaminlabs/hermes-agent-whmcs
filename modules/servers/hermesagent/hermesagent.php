@@ -620,9 +620,13 @@ function hermesagent_CreateAccount($params) {
         
         // Generate config.yaml
         if ($isFreeTier) {
-            // Use LiteLLM model name (no provider prefix — LiteLLM handles routing)
+            // Use LiteLLM model name and route it through the openai provider to hit our custom proxy
             $yamlContent = <<<YAML
 model: "{$litellmModel}"
+model_list:
+  - model_name: "{$litellmModel}"
+    litellm_params:
+      model: "openai/{$litellmModel}"
 dashboard:
   show_token_analytics: true
 tool_loop_guardrails:
