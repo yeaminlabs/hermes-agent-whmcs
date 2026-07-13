@@ -109,8 +109,8 @@ function hermesagent_ConfigOptions() {
             'FriendlyName' => 'Free Tier Default Model',
             'Type' => 'text',
             'Size' => '32',
-            'Default' => 'mistral.voxtral-mini-3b-2507',
-            'Description' => 'Model name as configured in LiteLLM config.yaml (e.g. mistral.voxtral-mini-3b-2507).',
+            'Default' => 'bedrock_mantle/google.gemma-4-e2b',
+            'Description' => 'Model name as configured in LiteLLM config.yaml (e.g. bedrock_mantle/google.gemma-4-e2b).',
         ],
     ];
 }
@@ -213,7 +213,8 @@ function hermesagent_generate_random_password($length = 16) {
 function hermesagent_litellm_config($params) {
     $url = hermesagent_resolve_param($params, 'configoption11', 'LiteLLM Gateway URL', 'https://ai-proxy.snbdhost.com');
     $key = hermesagent_resolve_param($params, 'configoption12', 'LiteLLM Master Key', 'sk-snbdhost-master-key-2026');
-    $model = hermesagent_resolve_param($params, 'configoption13', 'Free Tier Default Model', 'mistral.voxtral-mini-3b-2507');
+    $model = hermesagent_resolve_param($params, 'configoption13', 'Free Tier Default Model', 'bedrock_mantle/google.gemma-4-e2b');
+    
     return [
         'url'   => rtrim($url, '/'),
         'key'   => $key,
@@ -455,7 +456,7 @@ function hermesagent_CreateAccount($params) {
     $llmProvider = 'free-tier'; // SNBD API is the only provider — always use proxy
     $providerApiKey = '';
     $customEndpointUrl = '';
-    $modelName = hermesagent_resolve_param($params, 'configoption4', 'Model', 'mistral.voxtral-mini-3b-2507');
+    $modelName = hermesagent_resolve_param($params, 'configoption4', 'Model', 'bedrock_mantle/google.gemma-4-e2b');
     $messagingPlatform = hermesagent_resolve_param($params, 'configoption5', 'Messaging Platform', 'None');
     $messagingToken = hermesagent_resolve_param($params, 'configoption6', 'Bot Token', '');
     $dashboardUsername = hermesagent_resolve_param($params, 'configoption7', 'Dashboard Username', 'admin');
@@ -466,7 +467,7 @@ function hermesagent_CreateAccount($params) {
     $litellmCfg = [
         'url'   => 'https://ai-proxy.snbdhost.com',
         'key'   => 'sk-snbdhost-master-key-2026',
-        'model' => 'mistral.voxtral-mini-3b-2507',
+        'model' => 'bedrock_mantle/google.gemma-4-e2b',
     ];
     $litellmModel = $litellmCfg['model'];
     
