@@ -264,8 +264,9 @@ function hermesagent_litellm_create_key($gatewayUrl, $masterKey, $serviceId, $mo
             'Authorization: Bearer ' . $masterKey,
         ],
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 15,
-        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
     ]);
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -397,7 +398,7 @@ function hermesagent_get_ssh_client($params, $timeout = 30) {
 
     // Try phpseclib 3
     if (class_exists('\phpseclib3\Net\SSH2')) {
-        $ssh = new \phpseclib3\Net\SSH2($host, $port, $timeout);
+        $ssh = new \phpseclib3\Net\SSH2($host, $port);
         $ssh->setTimeout($timeout);
         if (!empty($accesshash)) {
             try {
@@ -416,7 +417,7 @@ function hermesagent_get_ssh_client($params, $timeout = 30) {
     } 
     // Try phpseclib 2
     elseif (class_exists('\phpseclib\Net\SSH2')) {
-        $ssh = new \phpseclib\Net\SSH2($host, $port, $timeout);
+        $ssh = new \phpseclib\Net\SSH2($host, $port);
         $ssh->setTimeout($timeout);
         if (!empty($accesshash) && class_exists('\phpseclib\Crypt\RSA')) {
             $key = new \phpseclib\Crypt\RSA();
@@ -436,7 +437,7 @@ function hermesagent_get_ssh_client($params, $timeout = 30) {
     }
     // Try legacy phpseclib 1
     elseif (class_exists('Net_SSH2')) {
-        $ssh = new \Net_SSH2($host, $port, $timeout);
+        $ssh = new \Net_SSH2($host, $port);
         $ssh->setTimeout($timeout);
         if (!empty($accesshash) && class_exists('Crypt_RSA')) {
             $key = new \Crypt_RSA();
