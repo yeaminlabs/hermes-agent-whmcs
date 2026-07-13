@@ -406,7 +406,26 @@ function hermesagent_CreateAccount($params) {
         $envContent = implode("\n", $envLines) . "\n";
         
         // Generate config.yaml
-        $yamlContent = <<<YAML
+        if ($llmProvider === 'bedrock') {
+            $yamlContent = <<<YAML
+model: "{$modelName}"
+model_list:
+  - model_name: "{$modelName}"
+    litellm_params:
+      model: "bedrock/{$modelName}"
+dashboard:
+  show_token_analytics: true
+tool_loop_guardrails:
+  warnings_enabled: true
+  hard_stop_enabled: true
+  hard_stop_after:
+    exact_failure: 5
+    idempotent_no_progress: 5
+terminal:
+  backend: docker
+YAML;
+        } else {
+            $yamlContent = <<<YAML
 model: "{$llmProvider}/{$modelName}"
 dashboard:
   show_token_analytics: true
@@ -419,6 +438,7 @@ tool_loop_guardrails:
 terminal:
   backend: docker
 YAML;
+        }
 
         // Build installation commands
         $dataDir = "/srv/hermes/{$serviceid}/data";
