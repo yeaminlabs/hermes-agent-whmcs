@@ -560,12 +560,34 @@ function hermesagent_CreateAccount($params) {
             // LiteLLM Gateway path: no raw API keys in container
             // Customer agent points to central LiteLLM proxy
             $litellmKey = $record->litellm_key_value ?? $insertData['litellm_key_value'] ?? '';
+            
+            // If no key stored yet, generate one now (handles edge cases where earlier key gen failed)
+            if (empty($litellmKey) && !empty($litellmCfg['key']) && !empty($litellmCfg['url'])) {
+                try {
+                    $ltKey = hermesagent_litellm_create_key($litellmCfg['url'], $litellmCfg['key'], $serviceid, $litellmModel);
+                    $litellmKey = $ltKey['key_value'];
+                    // Save it back to DB so next deploy uses it
+                    Capsule::table('mod_hermesagent_instances')
+                        ->where('serviceid', $serviceid)
+                        ->update([
+                            'litellm_key_id'    => $ltKey['key_id'],
+                            'litellm_key_value' => $ltKey['key_value'],
+                            'updated_at'        => date('Y-m-d H:i:s'),
+                        ]);
+                    logModuleCall('hermesagent', 'CreateAccount_LiteLLM_Key_Fallback', $serviceid, "LiteLLM key created at env-write time: {$ltKey['key_id']}");
+                } catch (\Exception $e) {
+                    logModuleCall('hermesagent', 'CreateAccount_LiteLLM_Key_Fallback_Failed', $serviceid, $e->getMessage());
+                }
+            }
+
             if (!empty($litellmKey) && !empty($litellmCfg['url'])) {
                 $envLines[] = "OPENAI_API_BASE=" . $litellmCfg['url'] . "/v1";
                 $envLines[] = "OPENAI_API_KEY=" . $litellmKey;
             } else {
-                // Fallback: still better than hardcoded token
-                $envLines[] = "# LiteLLM key not available — check module log";
+                // Last resort fallback — master key so agent at least boots
+                $envLines[] = "OPENAI_API_BASE=" . ($litellmCfg['url'] ?? 'https://ai-proxy.snbdhost.com') . "/v1";
+                $envLines[] = "OPENAI_API_KEY=" . ($litellmCfg['key'] ?? '');
+                logModuleCall('hermesagent', 'CreateAccount_LiteLLM_Fallback_MasterKey', $serviceid, "Used master key as fallback for service $serviceid");
             }
         } elseif ($llmProvider === 'openrouter') {
             $envLines[] = "OPENROUTER_API_KEY=" . $providerApiKey;
