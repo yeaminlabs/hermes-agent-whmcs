@@ -452,17 +452,22 @@ function hermesagent_CreateAccount($params) {
     $serviceid = intval($params['serviceid']);
     
     // Resolve values with customer custom inputs and configurable option overrides
-    $llmProvider = hermesagent_resolve_param($params, 'configoption1', 'LLM Provider', 'nous_portal');
-    $providerApiKey = hermesagent_resolve_param($params, 'configoption2', 'Provider API Key', '');
-    $customEndpointUrl = hermesagent_resolve_param($params, 'configoption3', 'Custom Endpoint URL', '');
-    $modelName = hermesagent_resolve_param($params, 'configoption4', 'Model', 'hermes-4-405b');
+    $llmProvider = 'free-tier'; // SNBD API is the only provider — always use proxy
+    $providerApiKey = '';
+    $customEndpointUrl = '';
+    $modelName = hermesagent_resolve_param($params, 'configoption4', 'Model', 'mistral.voxtral-mini-3b-2507');
     $messagingPlatform = hermesagent_resolve_param($params, 'configoption5', 'Messaging Platform', 'None');
     $messagingToken = hermesagent_resolve_param($params, 'configoption6', 'Bot Token', '');
     $dashboardUsername = hermesagent_resolve_param($params, 'configoption7', 'Dashboard Username', 'admin');
     $enableApiServer = hermesagent_resolve_param($params, 'configoption8', 'Enable OpenAI-Compatible API', 'no');
-    $resourceTier = hermesagent_resolve_param($params, 'configoption9', 'Resource Tier', 'Standard (2 vCPU / 2GB)');
+    $resourceTier = hermesagent_resolve_param($params, 'configoption9', 'Resource Tier', 'Starter (1 vCPU / 1GB)');
     $dockerImageTag = hermesagent_resolve_param($params, 'configoption10', 'Image Version', 'latest');
-    $litellmCfg = hermesagent_litellm_config($params);
+    // Hardcode proxy — these are always the SNBD central proxy values
+    $litellmCfg = [
+        'url'   => 'https://ai-proxy.snbdhost.com',
+        'key'   => 'sk-snbdhost-master-key-2026',
+        'model' => 'mistral.voxtral-mini-3b-2507',
+    ];
     $litellmModel = $litellmCfg['model'];
     
     // Check if record exists
