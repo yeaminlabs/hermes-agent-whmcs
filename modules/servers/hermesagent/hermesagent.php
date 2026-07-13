@@ -636,14 +636,17 @@ function hermesagent_CreateAccount($params) {
         if ($isFreeTier) {
             // For the SNBD proxy tier, use a proper model dict so Hermes routes
             // through our custom OpenAI-compatible proxy (provider: custom).
-            // Using a bare "openai-api/..." string causes Hermes to omit provider
-            // and base_url keys, falling through to openrouter → 401.
+            // The api_key must be in model.api_key so Hermes reads it as
+            // cfg_api_key in _resolve_openrouter_runtime — OPENAI_API_KEY env var
+            // is only read for openai.com endpoints, causing "no-key-required" otherwise.
             $proxyBaseUrl = rtrim($litellmCfg['url'] ?? 'https://ai-proxy.snbdhost.com', '/') . '/v1';
+            $proxyApiKey = !empty($litellmKey) ? $litellmKey : ($litellmCfg['key'] ?? 'sk-snbdhost-master-key-2026');
             $yamlContent = <<<YAML
 model:
   default: "{$litellmModel}"
   provider: custom
   base_url: "{$proxyBaseUrl}"
+  api_key: "{$proxyApiKey}"
 dashboard:
   show_token_analytics: true
 tool_loop_guardrails:
