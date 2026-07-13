@@ -173,8 +173,7 @@ function hermesagent_addon_setup_config_options($productId) {
             'name' => 'LLM Provider',
             'type' => 1, // Dropdown
             'subs' => [
-                'free-tier|SNBD Free Tier (via LiteLLM — no key needed)',
-                'bedrock|AI Cloud Network (Mistral Models)'
+                'free-tier|SNBD API (NO API NEEDED)'
             ]
         ],
         [
@@ -320,10 +319,7 @@ function hermesagent_output($vars) {
         if ($pid > 0) {
             try {
                 // Add Custom fields
-                hermesagent_addon_create_custom_field($pid, 'Provider API Key', 'password', 'API key/token for the selected inference provider (client-supplied, stored encrypted).', true, true);
                 hermesagent_addon_create_custom_field($pid, 'Dashboard Username', 'text', 'Login username for the Hermes web dashboard / Desktop Remote Gateway.', true, true);
-                hermesagent_addon_create_custom_field($pid, 'Bot Token', 'password', 'Bot token for the selected messaging platform (leave blank if None).', true, false);
-                hermesagent_addon_create_custom_field($pid, 'Custom Endpoint URL', 'text', 'Only used when Custom OpenAI-compatible endpoint is selected.', true, false);
                 
                 // Add Config options
                 hermesagent_addon_setup_config_options($pid);
