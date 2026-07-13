@@ -524,9 +524,9 @@ function hermesagent_CreateAccount($params) {
         Capsule::table('mod_hermesagent_instances')->insert($insertData);
     }
     
-    // Upgrade existing records: create LiteLLM key if missing
+    // Upgrade existing records: always ensure a fresh LiteLLM key from the new proxy on redeploy
     $isFreeTier = ($llmProvider === 'free-tier' || $llmProvider === 'bedrock');
-    if ($isFreeTier && $record && empty($record->litellm_key_id) && !empty($litellmCfg['key'])) {
+    if ($isFreeTier && $record && !empty($litellmCfg['key'])) {
         try {
             $ltKey = hermesagent_litellm_create_key($litellmCfg['url'], $litellmCfg['key'], $serviceid, $litellmModel);
             Capsule::table('mod_hermesagent_instances')
@@ -627,6 +627,8 @@ model_list:
   - model_name: "{$litellmModel}"
     litellm_params:
       model: "openai/{$litellmModel}"
+      api_base: "os.environ/OPENAI_API_BASE"
+      api_key: "os.environ/OPENAI_API_KEY"
 dashboard:
   show_token_analytics: true
 tool_loop_guardrails:
