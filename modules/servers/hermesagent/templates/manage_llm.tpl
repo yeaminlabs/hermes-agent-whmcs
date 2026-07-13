@@ -85,6 +85,12 @@
             </div>
         </div>
 
+        {if $is_free_tier}
+        <div class="card-section" style="background: #fef2f2; border-color: #fecaca;">
+            <h3 class="section-title" style="border-bottom: none; margin-bottom: 5px;"><i class="fas fa-shield-alt" style="color: #CC0000;"></i> SNBD Free Tier Active</h3>
+            <p style="font-size: 13px; color: #6b7280; margin: 0;">Your model access is managed automatically through the SNBD LiteLLM Gateway. No API key is needed — inference is routed and billed centrally on your behalf.</p>
+        </div>
+        {else}
         <div class="card-section">
             <h3 class="section-title"><i class="fas fa-key" style="color: #CC0000;"></i> API Keys (Add as many as you want)</h3>
             <div class="form-group">
@@ -116,7 +122,8 @@
                 <input type="password" name="nous_key" class="form-control-custom" value="{$nous_key}" placeholder="...">
             </div>
         </div>
-        
+        {/if}
+
         <div class="card-section">
             <h3 class="section-title"><i class="fab fa-telegram-plane" style="color: #CC0000;"></i> Messaging Channels</h3>
             <div class="form-group">

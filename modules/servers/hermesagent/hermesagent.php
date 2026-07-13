@@ -53,7 +53,7 @@ function hermesagent_ConfigOptions() {
             'FriendlyName' => 'Provider API Key',
             'Type' => 'password',
             'Size' => '48',
-            'Description' => 'API key/token for the selected provider (client-supplied, stored encrypted). Ignored for Free Tier.',
+            'Description' => 'Your own API key for the selected provider. NOT required when using SNBD Free Tier — the LiteLLM Gateway handles routing automatically.',
         ],
         'custom_endpoint_url' => [
             'FriendlyName' => 'Custom Endpoint URL',
@@ -1233,7 +1233,10 @@ function hermesagent_healthcheck($params) {
  */
 function hermesagent_manage_llm($params) {
     $serviceid = intval($params['serviceid']);
-    
+
+    $llmProvider = hermesagent_resolve_param($params, 'configoption1', 'LLM Provider', 'nous_portal');
+    $isFreeTier = ($llmProvider === 'free-tier' || $llmProvider === 'bedrock');
+
     // Default values if we can't parse them
     $vars = [
         'active_model' => '',
@@ -1248,7 +1251,8 @@ function hermesagent_manage_llm($params) {
         'serviceid' => $serviceid,
         'success' => isset($_GET['success']) ? true : false,
         'error' => '',
-        'deployment_status' => $params['status']
+        'deployment_status' => $params['status'],
+        'is_free_tier' => $isFreeTier
     ];
     
     try {
