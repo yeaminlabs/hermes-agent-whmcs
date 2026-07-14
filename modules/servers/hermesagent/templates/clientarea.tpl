@@ -13,75 +13,86 @@
         display: none !important;
     }
     
-    .hermes-container {
+    .hermes-wrapper {
         font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-        background: #ffffff;
-        border-radius: 12px;
-        padding: 35px;
         color: #111827;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
         margin: 20px 0;
-        position: relative;
-        border: 1px solid #e5e7eb;
     }
 
-    .hermes-container::before {
+    .hermes-wrapper .card {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+        background: #ffffff;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        overflow: hidden;
+    }
+
+    .hermes-wrapper .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.06);
+    }
+
+    .hermes-wrapper .card-header {
+        background: transparent;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        padding: 20px 24px;
+        font-weight: 600;
+        font-size: 16px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .hermes-header-card {
+        position: relative;
+        padding: 30px;
+        border-radius: 16px;
+        background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+        margin-bottom: 24px;
+        overflow: hidden;
+    }
+
+    .hermes-header-card::before {
         content: '';
         position: absolute;
-        top: 0; left: 0; right: 0; height: 3px;
-        background: #CC0000;
-        border-top-left-radius: 12px;
-        border-top-right-radius: 12px;
-    }
-
-    .hermes-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 30px;
-        flex-wrap: wrap;
-        gap: 15px;
-        border-bottom: 1px solid #f3f4f6;
-        padding-bottom: 20px;
-    }
-
-    .hermes-logo-area {
-        display: flex;
-        align-items: center;
-        gap: 16px;
+        top: 0; left: 0; right: 0; height: 4px;
+        background: linear-gradient(90deg, #CC0000, #ff4d4d);
     }
 
     .hermes-logo-wrapper {
-        width: 48px;
-        height: 48px;
+        width: 56px;
+        height: 56px;
+        background: white;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border: 1px solid rgba(0,0,0,0.05);
+        padding: 8px;
     }
 
-    .hermes-logo-icon {
+    .hermes-logo-wrapper img {
         width: 100%;
         height: 100%;
         object-fit: contain;
     }
 
     .hermes-title {
-        font-size: 24px;
+        font-size: 26px;
         font-weight: 700;
         margin: 0;
         color: #111827;
+        letter-spacing: -0.5px;
     }
 
     .hermes-subtitle {
-        font-size: 13px;
+        font-size: 14px;
         color: #6b7280;
         margin: 4px 0 0 0;
-    }
-    
-    .header-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
     }
 
     .status-badge {
@@ -90,10 +101,11 @@
         gap: 8px;
         padding: 8px 16px;
         border-radius: 9999px;
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
 
     .status-active {
@@ -123,135 +135,90 @@
         background-color: currentColor;
         display: inline-block;
         animation: pulse 2s infinite;
+        box-shadow: 0 0 8px currentColor;
     }
 
     @keyframes pulse {
         0% { transform: scale(0.95); opacity: 0.5; }
-        50% { transform: scale(1.1); opacity: 1; }
+        50% { transform: scale(1.2); opacity: 1; }
         100% { transform: scale(0.95); opacity: 0.5; }
     }
-    
-    /* EKG Heartbeat Animation */
-    .ekg-line {
-        stroke-dasharray: 300;
-        stroke-dashoffset: 300;
-        animation: drawEkg 2.5s linear infinite;
-    }
-    @keyframes drawEkg {
-        0% { stroke-dashoffset: 300; }
-        30% { stroke-dashoffset: 0; }
-        100% { stroke-dashoffset: -300; }
-    }
-    
-    .metric-box {
-        background: #ffffff;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        padding: 10px;
-        text-align: center;
-        flex: 1;
-    }
-    
-    .metric-value {
-        font-family: 'Fira Code', monospace;
-        font-size: 16px;
-        font-weight: 700;
-        color: #CC0000;
-        display: block;
-        margin-bottom: 2px;
-    }
-    
-    .metric-label {
-        font-size: 11px;
-        color: #6b7280;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
 
-    .hermes-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 20px;
-    }
-
-    @media (max-width: 768px) {
-        .hermes-grid {
-            grid-template-columns: 1fr;
-        }
-    }
-
-    .hermes-card {
-        background: #fafafa;
-        border: 1px solid #e5e7eb;
-        border-radius: 12px;
+    .glass-card-green {
+        background: rgba(220, 252, 231, 0.6);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(134, 239, 172, 0.5);
+        border-radius: 16px;
         padding: 24px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .glass-card-green::after {
+        content: '';
+        position: absolute;
+        top: -50%; right: -10%;
+        width: 150px; height: 150px;
+        background: radial-gradient(circle, rgba(34,197,94,0.1) 0%, rgba(255,255,255,0) 70%);
+        border-radius: 50%;
+        z-index: 0;
+    }
+
+    .glass-card-green > * {
+        position: relative;
+        z-index: 1;
+    }
+
+    .progress-bar-animated-gradient {
+        width: 100%;
+        height: 12px;
+        background: #e5e7eb;
+        border-radius: 999px;
+        overflow: hidden;
         position: relative;
     }
 
-    .card-title {
-        font-size: 15px;
-        font-weight: 700;
-        color: #111827;
-        margin-top: 0;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+    .progress-bar-animated-gradient .fill {
+        height: 100%;
+        background: linear-gradient(90deg, #10b981, #34d399, #10b981);
+        background-size: 200% 100%;
+        border-radius: 999px;
+        transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: gradientMove 3s linear infinite;
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
     }
 
-    .card-title i {
-        color: #111827;
-        font-size: 16px;
-    }
-
-    .info-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 0;
-        border-bottom: 1px solid #f3f4f6;
-    }
-    
-    .info-row:last-child {
-        border-bottom: none;
-    }
-
-    .info-label {
-        font-size: 13px;
-        color: #6b7280;
-        font-weight: 500;
-    }
-
-    .info-value-container {
-        display: flex;
-        align-items: center;
-        gap: 8px;
+    @keyframes gradientMove {
+        0% { background-position: 100% 0; }
+        100% { background-position: -100% 0; }
     }
 
     .code-val {
         font-family: 'Fira Code', 'Courier New', monospace;
-        background: #ffffff;
+        background: #f3f4f6;
         padding: 6px 12px;
-        border-radius: 6px;
-        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        border: 1px solid rgba(0,0,0,0.05);
         font-size: 13px;
-        color: #111827;
-        display: inline-block;
+        color: #1f2937;
         font-weight: 500;
     }
     
     .code-val.url-val {
         color: #CC0000;
+        background: rgba(204, 0, 0, 0.05);
+        border-color: rgba(204, 0, 0, 0.1);
     }
 
     .btn-icon-only {
-        background: none;
+        background: #f3f4f6;
         border: none;
         color: #6b7280;
         cursor: pointer;
-        padding: 6px;
-        border-radius: 6px;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
         transition: all 0.2s;
         display: inline-flex;
         align-items: center;
@@ -261,77 +228,112 @@
     .btn-icon-only:hover {
         color: #111827;
         background: #e5e7eb;
+        transform: translateY(-1px);
     }
 
     .hermes-btn-primary {
-        background: #CC0000;
+        background: linear-gradient(135deg, #CC0000 0%, #aa0000 100%);
         color: white;
         border: none;
-        border-radius: 8px;
-        padding: 8px 16px;
+        border-radius: 10px;
+        padding: 10px 20px;
         font-weight: 600;
-        font-size: 13px;
+        font-size: 14px;
         cursor: pointer;
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
         text-decoration: none;
+        box-shadow: 0 4px 15px rgba(204, 0, 0, 0.3);
     }
 
     .hermes-btn-primary:hover {
-        background: #aa0000;
+        background: linear-gradient(135deg, #aa0000 0%, #880000 100%);
         color: white;
         text-decoration: none;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(204, 0, 0, 0.4);
     }
-    
-    .hermes-btn-purple {
+
+    .hermes-btn-dark {
         background: #111827;
         color: white;
         border: none;
-        border-radius: 8px;
+        border-radius: 10px;
         padding: 10px 20px;
         font-weight: 600;
-        font-size: 13px;
+        font-size: 14px;
         cursor: pointer;
         display: inline-flex;
         align-items: center;
         gap: 8px;
-        transition: all 0.2s ease;
+        transition: all 0.3s ease;
         text-decoration: none;
+        box-shadow: 0 4px 15px rgba(17, 24, 39, 0.2);
     }
-    
-    .hermes-btn-purple:hover {
+
+    .hermes-btn-dark:hover {
         background: #000000;
         color: white;
         text-decoration: none;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(17, 24, 39, 0.3);
     }
 
-    /* Step-by-Step pairing box */
-    .pairing-box {
-        background: #fafafa;
-        border: 1px solid #e5e7eb;
+    /* Neural Link EKG Animation */
+    .neural-link-box {
+        background: #0f172a;
         border-radius: 12px;
-        padding: 24px;
-        margin-top: 0;
-    }
-
-    .pairing-title {
-        font-size: 15px;
-        font-weight: 700;
-        color: #111827;
-        margin-top: 0;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        padding: 20px;
+        position: relative;
+        overflow: hidden;
     }
     
-    .pairing-title i {
+    .ekg-line {
+        stroke-dasharray: 300;
+        stroke-dashoffset: 300;
+        animation: drawEkg 2.5s linear infinite;
+        filter: drop-shadow(0 0 6px rgba(204, 0, 0, 0.8));
+    }
+    
+    @keyframes drawEkg {
+        0% { stroke-dashoffset: 300; }
+        30% { stroke-dashoffset: 0; }
+        100% { stroke-dashoffset: -300; }
+    }
+
+    .metric-box {
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+        color: white;
+    }
+
+    .metric-value {
+        font-family: 'Fira Code', monospace;
         font-size: 16px;
-        color: #111827;
+        font-weight: 700;
+        color: #f87171;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .metric-label {
+        font-size: 10px;
+        color: #94a3b8;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+
+    /* Custom Toast */
+    .hermes-toast-container {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        z-index: 1055;
     }
 
     .step-list {
@@ -342,77 +344,65 @@
 
     .step-item {
         display: flex;
-        gap: 15px;
-        margin-bottom: 16px;
-        font-size: 13px;
+        gap: 16px;
+        margin-bottom: 20px;
+        font-size: 14px;
         color: #4b5563;
         line-height: 1.6;
     }
 
+    .step-item:last-child {
+        margin-bottom: 0;
+    }
+
     .step-number {
-        width: 24px;
-        height: 24px;
+        width: 28px;
+        height: 28px;
         border-radius: 50%;
-        background: #CC0000;
-        color: white;
+        background: rgba(204, 0, 0, 0.1);
+        color: #CC0000;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 700;
-        font-size: 12px;
+        font-size: 13px;
         flex-shrink: 0;
-    }
-
-    .clipboard-toast {
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: #10b981;
-        color: white;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        opacity: 0;
-        transition: opacity 0.3s ease;
-        z-index: 9999;
-        pointer-events: none;
-    }
-    
-    .toast-show {
-        opacity: 1 !important;
+        border: 1px solid rgba(204, 0, 0, 0.2);
     }
 </style>
 
-<div class="hermes-container">
+<div class="hermes-wrapper container-fluid px-0">
     {if $deployment_status eq 'Suspended' or $deployment_status eq 'Terminated'}
-    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.7); backdrop-filter: blur(8px); z-index: 99; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid rgba(239, 68, 68, 0.3);">
-        <div style="background: #fef2f2; padding: 30px; border-radius: 12px; border: 2px solid #ef4444; max-width: 85%; text-align: center; box-shadow: 0 10px 25px rgba(239, 68, 68, 0.2);">
-            <i class="fas fa-ban" style="font-size: 40px; color: #ef4444; margin-bottom: 15px;"></i>
-            <h3 style="margin: 0 0 10px 0; color: #991b1b; font-size: 20px;">Account {$deployment_status}</h3>
-            <p style="color: #7f1d1d; margin: 0; font-size: 14px; line-height: 1.5;">Your Agent account has been suspended or flagged. This typically happens due to a missed payment. Please check your invoices and clear the due dates before it gets terminated. Terminated or Suspended users will not be able to recover any agent data or API keys from their agent.</p>
+    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255,255,255,0.8); backdrop-filter: blur(12px); z-index: 99; display: flex; align-items: center; justify-content: center; border-radius: 16px;">
+        <div class="card shadow-lg border-danger" style="max-width: 500px; text-align: center; background: #fef2f2;">
+            <div class="card-body p-5">
+                <i class="fas fa-ban mb-3" style="font-size: 48px; color: #ef4444;"></i>
+                <h3 class="fw-bold text-danger mb-3">Account {$deployment_status}</h3>
+                <p class="text-danger opacity-75 mb-0">Your Agent account has been suspended or flagged. This typically happens due to a missed payment. Please check your invoices and clear the due dates before it gets terminated. Terminated or Suspended users will not be able to recover any agent data or API keys from their agent.</p>
+            </div>
         </div>
     </div>
     {/if}
-    <div class="hermes-header">
-        <div class="hermes-logo-area">
+
+    <!-- Header Section -->
+    <div class="hermes-header-card d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-4">
+        <div class="d-flex align-items-center gap-3">
             <div class="hermes-logo-wrapper">
-                <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/hermesagent.png" class="hermes-logo-icon" alt="Hermes Logo" />
+                <img src="https://raw.githubusercontent.com/lobehub/lobe-icons/refs/heads/master/packages/static-png/light/hermesagent.png" alt="Hermes Logo" />
             </div>
             <div>
                 <h3 class="hermes-title">Hermes Cloud Agent</h3>
                 <p class="hermes-subtitle">Managed dockerized deployment by SNBD Host</p>
             </div>
         </div>
-        <div class="header-actions">
+        <div class="d-flex align-items-center gap-3">
             {if $deployment_status eq 'Active'}
                 <span class="status-badge status-active">
                     <span class="status-dot"></span>
                     Running
                 </span>
                 <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=manage_llm" class="hermes-btn-primary">
-                    <i class="fas fa-microchip"></i> Manage LLM Providers
+                    <i class="fas fa-microchip"></i> Manage LLMs
                 </a>
             {elseif $deployment_status eq 'Suspended'}
                 <span class="status-badge status-suspended">
@@ -428,185 +418,217 @@
     </div>
 
     {if $error}
-        <div class="alert alert-danger" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #f87171;">
+        <div class="alert alert-danger d-flex align-items-center gap-2 border-danger bg-danger bg-opacity-10 text-danger rounded-3" role="alert">
             <i class="fas fa-exclamation-triangle"></i> {$error}
         </div>
     {/if}
 
-    <div style="background: #f0fdf4; border: 1px solid #86efac; border-radius: 8px; padding: 20px; margin-bottom: 20px; display: flex; align-items: flex-start; gap: 15px;">
-        <div style="font-size: 40px; color: #16a34a; margin-top: 5px;"><i class="fas fa-robot"></i></div>
+    <!-- Powered by Gemma -->
+    <div class="glass-card-green d-flex align-items-start gap-4">
+        <div class="display-5 text-success"><i class="fas fa-robot"></i></div>
         <div>
-            <h4 style="margin: 0 0 10px 0; color: #14532d; font-size: 16px;">Powered by Google Gemma</h4>
-            <p style="margin: 0; color: #14532d; font-size: 14px; line-height: 1.5;">
+            <h4 class="fw-bold text-success mb-2 fs-5">Powered by Google Gemma</h4>
+            <p class="text-success text-opacity-75 mb-0" style="font-size: 14.5px;">
                 This agent is powered by <strong>Google Gemma</strong> technology. You are exclusively allowed to use the model <strong><code>bedrock_mantle/google.gemma-4-e2b</code></strong> for your agentic work. You are initially allowed to use up to <strong>10M tokens combined</strong>. Gemma 4 provides an immense capability for coding, problem-solving, and general reasoning. All you have to do is switch to the <strong><code>bedrock_mantle/google.gemma-4-e2b</code></strong> model in your settings and it will work instantly.
             </p>
         </div>
     </div>
 
-    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 12px; padding: 24px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-        <h4 style="margin: 0 0 15px 0; color: #111827; font-size: 16px; display: flex; align-items: center; justify-content: space-between;">
-            <span><i class="fas fa-chart-pie" style="color: #16a34a; margin-right: 8px;"></i> Free Gemma Quota</span>
-            <span style="font-size: 13px; font-weight: normal; background: #fef3c7; color: #b45309; padding: 4px 10px; border-radius: 12px;">{$days_remaining} Access</span>
-        </h4>
-        
-        <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; color: #4b5563; font-weight: 500;">
-            <span>Tokens Used: {$total_used|number_format}</span>
-            <span>Limit: {$token_limit|number_format}</span>
+    <!-- Free Gemma Quota -->
+    <div class="card mb-4">
+        <div class="card-body p-4">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="mb-0 fs-6 fw-bold text-dark d-flex align-items-center gap-2">
+                    <i class="fas fa-chart-pie text-success"></i> Free Gemma Quota
+                </h4>
+                <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fw-semibold">{$days_remaining} Access</span>
+            </div>
+            
+            <div class="d-flex justify-content-between text-muted fw-semibold mb-2" style="font-size: 13px;">
+                <span>Tokens Used: {$total_used|number_format}</span>
+                <span>Limit: {$token_limit|number_format}</span>
+            </div>
+            <div class="progress-bar-animated-gradient">
+                <div class="fill" style="width: {$percent_used}%;"></div>
+            </div>
+            <p class="mt-3 mb-0 text-muted" style="font-size: 12.5px;">
+                Your free allowance counts input and output tokens combined. Watch this bar fill up as your agent processes tasks!
+            </p>
         </div>
-        <div style="width: 100%; height: 12px; background: #e5e7eb; border-radius: 6px; overflow: hidden;">
-            <div style="width: {$percent_used}%; height: 100%; background: linear-gradient(90deg, #4ade80, #16a34a); border-radius: 6px; transition: width 0.5s ease;"></div>
-        </div>
-        <p style="margin: 10px 0 0 0; font-size: 12px; color: #6b7280;">
-            Your free allowance counts input and output tokens combined. Watch this bar fill up as your agent processes tasks!
-        </p>
     </div>
 
-    <div class="hermes-grid">
-        <!-- Dashboard Credentials Card -->
-        <div class="hermes-card">
-            <h4 class="card-title">
-                <i class="fas fa-sliders-h"></i> Gateway Dashboard Connection
-            </h4>
-            
-            <div class="info-row">
-                <span class="info-label">Web Dashboard URL</span>
-                <div class="info-value-container">
-                    {if $dashboard_url}
-                        <span class="code-val url-val">{$dashboard_url}</span>
-                        <button class="btn-icon-only" onclick="copyToClipboard('{$dashboard_url}', 'Dashboard URL copied!')" title="Copy URL">
-                            <i class="far fa-copy"></i>
-                        </button>
-                    {else}
-                        <span class="text-muted">Not Available</span>
-                    {/if}
+    <div class="row g-4 mb-4">
+        <!-- Gateway Dashboard Connection -->
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header border-0 pb-0 pt-4 px-4 bg-transparent">
+                    <i class="fas fa-sliders-h text-dark opacity-75"></i> Gateway Dashboard Connection
                 </div>
-            </div>
-            
-            <div class="info-row">
-                <span class="info-label">Auth Username</span>
-                <div class="info-value-container">
-                    <span class="code-val">{$username}</span>
-                    <button class="btn-icon-only" onclick="copyToClipboard('{$username}', 'Username copied!')" title="Copy Username">
-                        <i class="far fa-copy"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="info-row">
-                <span class="info-label">Auth Password</span>
-                <div class="info-value-container">
-                    <span class="code-val" id="dash-pass" style="-webkit-text-security: disc;">{$password}</span>
-                    <button class="btn-icon-only" onclick="togglePasswordVisibility()" title="Toggle View" id="toggle-pass-btn">
-                        <i class="far fa-eye"></i>
-                    </button>
-                    <button class="btn-icon-only" onclick="copyToClipboard('{$password}', 'Password copied!')" title="Copy Password">
-                        <i class="far fa-copy"></i>
-                    </button>
-                </div>
-            </div>
-            
-            <div class="info-row">
-                <span class="info-label">Dashboard Port</span>
-                <div class="info-value-container">
-                    <span class="code-val">{$dash_port}</span>
-                </div>
-            </div>
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-3">
+                        <span class="text-muted fw-semibold" style="font-size: 13.5px;">Web Dashboard URL</span>
+                        <div class="d-flex align-items-center gap-2">
+                            {if $dashboard_url}
+                                <span class="code-val url-val">{$dashboard_url}</span>
+                                <button class="btn-icon-only" onclick="copyToClipboard('{$dashboard_url}', 'Dashboard URL copied!')" title="Copy URL">
+                                    <i class="far fa-copy"></i>
+                                </button>
+                            {else}
+                                <span class="text-muted small">Not Available</span>
+                            {/if}
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-3">
+                        <span class="text-muted fw-semibold" style="font-size: 13.5px;">Auth Username</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="code-val">{$username}</span>
+                            <button class="btn-icon-only" onclick="copyToClipboard('{$username}', 'Username copied!')" title="Copy Username">
+                                <i class="far fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-3">
+                        <span class="text-muted fw-semibold" style="font-size: 13.5px;">Auth Password</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="code-val" id="dash-pass" style="-webkit-text-security: disc;">{$password}</span>
+                            <button class="btn-icon-only" onclick="togglePasswordVisibility()" title="Toggle View" id="toggle-pass-btn">
+                                <i class="far fa-eye"></i>
+                            </button>
+                            <button class="btn-icon-only" onclick="copyToClipboard('{$password}', 'Password copied!')" title="Copy Password">
+                                <i class="far fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center py-3">
+                        <span class="text-muted fw-semibold" style="font-size: 13.5px;">Dashboard Port</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="code-val">{$dash_port}</span>
+                        </div>
+                    </div>
 
-            <div style="margin-top: 25px; text-align: right;">
-                {if $dashboard_url}
-                    <a href="{$dashboard_url}" target="_blank" class="hermes-btn-purple">
-                        Open Dashboard <i class="fas fa-arrow-right"></i>
-                    </a>
-                {/if}
+                    <div class="mt-4 text-end">
+                        {if $dashboard_url}
+                            <a href="{$dashboard_url}" target="_blank" class="hermes-btn-dark">
+                                Open Dashboard <i class="fas fa-arrow-right ms-1"></i>
+                            </a>
+                        {/if}
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Agent Neural Link -->
-        <div class="hermes-card">
-            <h4 class="card-title"><i class="fas fa-heartbeat" style="color: #CC0000;"></i> Agent Neural Link</h4>
-            
-            {if $deployment_status eq 'Active'}
-                <div style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px; margin-bottom: 20px; overflow: hidden; position: relative;">
-                    <div style="position: absolute; top: 10px; right: 15px; display: flex; align-items: center; gap: 5px; font-size: 11px; color: #10b981; font-weight: 600;">
-                        <span class="status-dot" style="color: #10b981;"></span> SYNCHRONIZED
-                    </div>
-                    <p style="font-size: 12px; color: #6b7280; margin: 0 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">Container Link Stream</p>
-                    
-                    <svg width="100%" height="50" viewBox="0 0 300 50" preserveAspectRatio="none" style="filter: drop-shadow(0 0 4px rgba(204, 0, 0, 0.3));">
-                        <!-- Grid background -->
-                        <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                            <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#f3f4f6" stroke-width="1"/>
-                        </pattern>
-                        <rect width="100%" height="100%" fill="url(#grid)" />
-                        <!-- EKG Line -->
-                        <path class="ekg-line" d="M 0 25 L 100 25 L 110 10 L 120 45 L 130 15 L 140 30 L 150 25 L 300 25" fill="none" stroke="#CC0000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header border-0 pb-0 pt-4 px-4 bg-transparent">
+                    <i class="fas fa-heartbeat text-danger"></i> Agent Neural Link
                 </div>
+                <div class="card-body p-4">
+                    {if $deployment_status eq 'Active'}
+                        <div class="neural-link-box mb-4">
+                            <div class="position-absolute top-0 end-0 p-3 d-flex align-items-center gap-2" style="font-size: 10px; color: #10b981; font-weight: 700; letter-spacing: 1px;">
+                                <span class="status-dot" style="color: #10b981;"></span> SYNCHRONIZED
+                            </div>
+                            <p class="text-white opacity-50 mb-3" style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Container Link Stream</p>
+                            
+                            <svg width="100%" height="60" viewBox="0 0 300 60" preserveAspectRatio="none">
+                                <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/>
+                                </pattern>
+                                <rect width="100%" height="100%" fill="url(#grid)" />
+                                <path class="ekg-line" d="M 0 30 L 100 30 L 110 10 L 120 50 L 130 15 L 140 35 L 150 30 L 300 30" fill="none" stroke="#CC0000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
 
-                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-                    <div class="metric-box">
-                        <span class="metric-value">{$serviceid}</span>
-                        <span class="metric-label">Container ID</span>
-                    </div>
-                    <div class="metric-box">
-                        <span class="metric-value">LIVE</span>
-                        <span class="metric-label">Uptime Status</span>
-                    </div>
-                    <div class="metric-box">
-                        <span class="metric-value">OK</span>
-                        <span class="metric-label">Memory Allocation</span>
-                    </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-4">
+                                <div class="metric-box bg-dark">
+                                    <span class="metric-value">{$serviceid}</span>
+                                    <span class="metric-label">Container ID</span>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="metric-box bg-dark">
+                                    <span class="metric-value text-success">LIVE</span>
+                                    <span class="metric-label">Uptime</span>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="metric-box bg-dark">
+                                    <span class="metric-value text-success">OK</span>
+                                    <span class="metric-label">Memory</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <p class="text-muted mb-0" style="font-size: 13px; line-height: 1.6;">
+                            Your Hermes Agent is fully deployed and listening for remote connections. System resources are actively monitored.
+                        </p>
+                    {else}
+                        <div class="h-100 d-flex flex-column align-items-center justify-content-center text-muted py-5">
+                            <i class="fas fa-power-off mb-3" style="font-size: 40px; opacity: 0.3;"></i>
+                            <p class="mb-0 fw-medium">Neural link offline. Agent is not currently active.</p>
+                        </div>
+                    {/if}
                 </div>
-                
-                <p style="font-size: 12px; color: #6b7280; margin: 0; line-height: 1.5;">
-                    Your Hermes Agent is fully deployed and listening for remote connections. System resources are actively monitored.
-                </p>
-            {else}
-                <div style="padding: 40px 20px; text-align: center; color: #6b7280;">
-                    <i class="fas fa-power-off" style="font-size: 32px; color: #d1d5db; margin-bottom: 15px;"></i>
-                    <p style="margin: 0; font-size: 13px;">Neural link offline. Agent is not currently active.</p>
-                </div>
-            {/if}
+            </div>
         </div>
     </div>
 
     <!-- Analytics & Usage Dashboard -->
     {if $deployment_status eq 'Active'}
-    <div class="pairing-box" style="margin-top: 20px;">
-        <h4 class="pairing-title">
-            <i class="fas fa-chart-line"></i> Analytics & Usage
-        </h4>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-            <div style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px;">
-                <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">CPU Usage</div>
-                <div id="stat-cpu" style="font-family: 'Fira Code', monospace; font-size: 18px; font-weight: 700; color: #111827;">{$stat_cpu}</div>
-            </div>
-            <div style="background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 15px;">
-                <div style="font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px;">Memory Usage</div>
-                <div id="stat-mem" style="font-family: 'Fira Code', monospace; font-size: 18px; font-weight: 700; color: #111827;">{$stat_mem}</div>
-            </div>
+    <div class="card mb-4">
+        <div class="card-header border-0 pb-0 pt-4 px-4 bg-transparent">
+            <i class="fas fa-chart-line text-primary"></i> Analytics & Usage
         </div>
+        <div class="card-body p-4">
+            <div class="row g-4 mb-4">
+                <div class="col-md-6">
+                    <div class="bg-light rounded-4 p-4 border text-center h-100">
+                        <div class="text-muted text-uppercase fw-bold mb-2" style="font-size: 11px; letter-spacing: 1px;">CPU Usage</div>
+                        <div id="stat-cpu" class="display-6 fw-bold text-dark" style="font-family: 'Fira Code', monospace;">{$stat_cpu}</div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="bg-light rounded-4 p-4 border text-center h-100">
+                        <div class="text-muted text-uppercase fw-bold mb-2" style="font-size: 11px; letter-spacing: 1px;">Memory Usage</div>
+                        <div id="stat-mem" class="display-6 fw-bold text-dark" style="font-family: 'Fira Code', monospace;">{$stat_mem}</div>
+                    </div>
+                </div>
+            </div>
 
-        <div style="position: relative; height: 250px; width: 100%;">
-            <canvas id="tokenUsageChart"></canvas>
-        </div>
-        
-        <div style="margin-top: 15px; padding: 15px; background: #f3f4f6; border-radius: 8px; text-align: center; font-size: 13px; color: #374151;">
-            <div style="margin-bottom: 8px;"><strong>Model Filtered:</strong> <code style="color: #16a34a; background: #dcfce7; padding: 2px 6px; border-radius: 4px;">bedrock_mantle/google.gemma-4-e2b</code></div>
-            <div><strong>Input Tokens:</strong> <span style="color: #3b82f6; font-weight: bold;">{$stat_prompt_tokens|number_format|default:0}</span> &nbsp;|&nbsp; <strong>Output Tokens:</strong> <span style="color: #10b981; font-weight: bold;">{$stat_completion_tokens|number_format|default:0}</span></div>
+            <div class="position-relative" style="height: 300px; width: 100%;">
+                <canvas id="tokenUsageChart"></canvas>
+            </div>
+            
+            <div class="mt-4 p-3 bg-light rounded-3 text-center border">
+                <div class="mb-2" style="font-size: 14px;">
+                    <span class="text-muted fw-semibold me-2">Model Filtered:</span>
+                    <code class="bg-success bg-opacity-10 text-success px-2 py-1 rounded fw-bold">bedrock_mantle/google.gemma-4-e2b</code>
+                </div>
+                <div style="font-size: 14px;">
+                    <span class="text-muted fw-semibold">Input Tokens:</span> <span class="text-primary fw-bold">{$stat_prompt_tokens|number_format|default:0}</span> 
+                    <span class="mx-2 text-muted">|</span> 
+                    <span class="text-muted fw-semibold">Output Tokens:</span> <span class="text-success fw-bold">{$stat_completion_tokens|number_format|default:0}</span>
+                </div>
+            </div>
         </div>
     </div>
     
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const ctx = document.getElementById('tokenUsageChart').getContext('2d');
+        const ctx = document.getElementById('tokenUsageChart');
+        if(!ctx) return;
+        
         const promptTokens = {$stat_prompt_tokens|default:0};
         const completionTokens = {$stat_completion_tokens|default:0};
         
         const hasData = (promptTokens > 0 || completionTokens > 0);
         
-        new Chart(ctx, {
+        new Chart(ctx.getContext('2d'), {
             type: 'doughnut',
             data: {
                 labels: hasData ? ['Prompt Tokens', 'Completion Tokens'] : ['No Data Yet'],
@@ -614,7 +636,8 @@
                     data: hasData ? [promptTokens, completionTokens] : [1],
                     backgroundColor: hasData ? ['#3b82f6', '#10b981'] : ['#e5e7eb'],
                     hoverBackgroundColor: hasData ? ['#2563eb', '#059669'] : ['#d1d5db'],
-                    borderWidth: 0
+                    borderWidth: 0,
+                    borderRadius: hasData ? 5 : 0
                 }]
             },
             options: {
@@ -624,40 +647,41 @@
                     legend: {
                         position: 'bottom',
                         labels: {
-                            font: {
-                                family: "'Outfit', sans-serif"
-                            }
+                            font: { family: "'Outfit', sans-serif", size: 13 },
+                            padding: 20
                         }
                     },
                     title: {
                         display: true,
                         text: 'Recent Token Processing',
-                        font: {
-                            family: "'Outfit', sans-serif",
-                            size: 14,
-                            weight: '600'
-                        },
-                        color: '#4b5563'
+                        font: { family: "'Outfit', sans-serif", size: 16, weight: '700' },
+                        color: '#111827',
+                        padding: { bottom: 20 }
                     }
                 },
-                cutout: '70%'
+                cutout: '75%',
+                animation: {
+                    animateScale: true,
+                    animateRotate: true
+                }
             }
         });
     });
     </script>
     {/if}
 
-    <!-- Website Live Chat Widget (Only if API Enabled) -->
-    <div class="pairing-box" style="margin-top: 20px;">
-        <h4 class="pairing-title">
-            <i class="fas fa-comment-dots"></i> Website Live Chat Widget
-        </h4>
-        <p style="font-size: 13px; color: #4b5563; margin-bottom: 15px;">
-            Copy and paste this HTML snippet into the <code>&lt;body&gt;</code> of your website (WordPress, Shopify, etc.) to instantly add a floating AI customer support chat that connects directly to your Hermes Agent.
-        </p>
-        
-        <div style="position: relative;">
-            <textarea id="hermesWidgetCode" readonly style="width: 100%; height: 200px; padding: 15px; background: #1e1e1e; color: #d4d4d4; font-family: 'Fira Code', monospace; font-size: 12px; border-radius: 8px; border: 1px solid #333; resize: vertical;" onclick="this.select();">
+    <!-- Website Live Chat Widget -->
+    <div class="card mb-4">
+        <div class="card-header border-0 pb-0 pt-4 px-4 bg-transparent">
+            <i class="fas fa-comment-dots text-info"></i> Website Live Chat Widget
+        </div>
+        <div class="card-body p-4">
+            <p class="text-muted mb-4" style="font-size: 14px;">
+                Copy and paste this HTML snippet into the <code class="bg-light px-1 rounded">&lt;body&gt;</code> of your website (WordPress, Shopify, etc.) to instantly add a floating AI customer support chat that connects directly to your Hermes Agent.
+            </p>
+            
+            <div class="position-relative">
+                <textarea id="hermesWidgetCode" readonly class="form-control font-monospace bg-dark text-light border-0 shadow-inner p-4 rounded-4" style="height: 250px; font-size: 13px; resize: vertical;" onclick="this.select();">
 &lt;!-- Hermes Agent Live Chat Widget --&gt;
 &lt;script&gt;
 (function() {literal}{{/literal}
@@ -760,109 +784,127 @@
     input.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMsg(); });
 {/literal}})();
 &lt;/script&gt;
-            </textarea>
-            
-            <button onclick="copyHermesWidgetCode(event)" style="position: absolute; top: 10px; right: 20px; background: #3b82f6; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: background 0.2s;">
-                <i class="far fa-copy"></i> Copy Code
-            </button>
+                </textarea>
+                
+                <button onclick="copyHermesWidgetCode(event)" class="btn btn-primary position-absolute top-0 end-0 m-3 d-flex align-items-center gap-2 shadow-sm rounded-3">
+                    <i class="far fa-copy"></i> Copy Code
+                </button>
+            </div>
         </div>
     </div>
     
-    <script>
-    function copyHermesWidgetCode(event) {
-        var copyText = document.getElementById("hermesWidgetCode");
-        copyText.select();
-        copyText.setSelectionRange(0, 99999);
-        navigator.clipboard.writeText(copyText.value).then(function() {
-            const btn = event.currentTarget;
-            const originalHtml = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-            btn.style.background = '#10b981';
-            setTimeout(function() {
-                btn.innerHTML = originalHtml;
-                btn.style.background = '#3b82f6';
-            }, 2000);
-        });
-    }
-    </script>
-    <!-- Hermes Desktop Pairing Guide -->
-    <div class="pairing-box">
-        <h4 class="pairing-title">
-            <i class="fas fa-desktop"></i> Pair with Hermes Desktop App
-        </h4>
-        <ul class="step-list">
-            <li class="step-item">
-                <span class="step-number">1</span>
-                Download and install the <strong>Hermes Desktop</strong> application for your operating system from the official site (<a href="https://hermes-agent.nousresearch.com/" target="_blank" style="color: #a5b4fc; text-decoration: underline;">hermes-agent.nousresearch.com</a>).
-            </li>
-            <li class="step-item">
-                <span class="step-number">2</span>
-                Launch Hermes Desktop, navigate to the connection manager, and select <strong>Remote Gateway</strong> or <strong>Connect to Remote Server</strong>.
-            </li>
-            <li class="step-item">
-                <span class="step-number">3</span>
-                Enter the connection settings provided in the card above:
-                <br>
-                <code style="background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-top: 5px; display: inline-block;">
-                    Host/URL: {$dashboard_url}
-                </code>
-                <br>
-                <code style="background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; font-size: 12px; margin-top: 5px; display: inline-block;">
-                    Username: {$username}
-                </code>
-            </li>
-            <li class="step-item">
-                <span class="step-number">4</span>
-                Save the configurations. Your local Hermes Desktop app is now connected to this high-performance cloud container and will securely save agent states, memory, and custom skills directly on our host.
-            </li>
-        </ul>
-    </div>
-
-    <!-- Data Management -->
-    <div class="pairing-box" style="margin-top: 20px;">
-        <h4 class="pairing-title">
-            <i class="fas fa-database"></i> Data Management
-        </h4>
-        <p style="font-size: 13px; color: #4b5563; margin-bottom: 15px; line-height: 1.5;">
-            Download a complete snapshot of your agent's brain. This backup contains all long-term memories, chat history, custom skills, and environment configurations in a highly compressed `.tar.gz` format.
-        </p>
-        <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=downloadbackup" class="hermes-btn-primary" style="background: #10b981;">
-            <i class="fas fa-download"></i> Download Agent Brain
-        </a>
+    <!-- Hermes Desktop Pairing Guide & Data Management -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header border-0 pb-0 pt-4 px-4 bg-transparent">
+                    <i class="fas fa-desktop text-dark opacity-75"></i> Pair with Hermes Desktop App
+                </div>
+                <div class="card-body p-4">
+                    <ul class="step-list">
+                        <li class="step-item">
+                            <span class="step-number">1</span>
+                            <div>Download and install the <strong>Hermes Desktop</strong> application for your operating system from the official site (<a href="https://hermes-agent.nousresearch.com/" target="_blank" class="text-primary text-decoration-none fw-semibold">hermes-agent.nousresearch.com</a>).</div>
+                        </li>
+                        <li class="step-item">
+                            <span class="step-number">2</span>
+                            <div>Launch Hermes Desktop, navigate to the connection manager, and select <strong>Remote Gateway</strong> or <strong>Connect to Remote Server</strong>.</div>
+                        </li>
+                        <li class="step-item">
+                            <span class="step-number">3</span>
+                            <div>
+                                Enter the connection settings provided in the card above:
+                                <div class="mt-2 d-flex flex-wrap gap-2">
+                                    <code class="bg-light border px-2 py-1 rounded text-dark">Host/URL: {$dashboard_url}</code>
+                                    <code class="bg-light border px-2 py-1 rounded text-dark">Username: {$username}</code>
+                                </div>
+                            </div>
+                        </li>
+                        <li class="step-item">
+                            <span class="step-number">4</span>
+                            <div>Save the configurations. Your local Hermes Desktop app is now connected to this high-performance cloud container and will securely save agent states, memory, and custom skills directly on our host.</div>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4">
+            <div class="card h-100 border-success border-opacity-25 bg-success bg-opacity-10">
+                <div class="card-body p-4 d-flex flex-column justify-content-center text-center">
+                    <div class="display-5 text-success mb-3"><i class="fas fa-database"></i></div>
+                    <h4 class="fw-bold text-success mb-3">Data Management</h4>
+                    <p class="text-success text-opacity-75 mb-4" style="font-size: 14px;">
+                        Download a complete snapshot of your agent's brain. This backup contains all long-term memories, chat history, custom skills, and environment configurations in a highly compressed `.tar.gz` format.
+                    </p>
+                    <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=downloadbackup" class="btn btn-success fw-bold rounded-pill px-4 py-2 mt-auto align-self-center shadow-sm">
+                        <i class="fas fa-download me-2"></i> Download Agent Brain
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Danger Zone -->
-    <div class="pairing-box" style="margin-top: 20px; border-color: #fca5a5; background: #fef2f2;">
-        <h4 class="pairing-title" style="color: #ef4444;">
-            <i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i> Danger Zone
-        </h4>
-        <p style="font-size: 13px; color: #7f1d1d; margin-bottom: 15px; line-height: 1.5;">
-            <strong>Warning:</strong> The Kill Switch will completely destroy your Hermes Agent and permanently wipe all its memory, skills, and configuration data. This action cannot be undone.
-        </p>
-        <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=killswitch" class="hermes-btn-primary" style="background: #dc2626;" onclick="return confirm('WARNING: Are you absolutely sure? All data will be lost forever and the agent will be terminated. Click OK to proceed.');">
-            <i class="fas fa-skull-crossbones"></i> Execute Kill Switch
-        </a>
+    <div class="card border-danger border-opacity-50 bg-danger bg-opacity-10 mb-4">
+        <div class="card-body p-4">
+            <h4 class="fw-bold text-danger mb-3 d-flex align-items-center gap-2">
+                <i class="fas fa-exclamation-triangle"></i> Danger Zone
+            </h4>
+            <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-4">
+                <p class="text-danger text-opacity-75 mb-0" style="font-size: 14.5px;">
+                    <strong>Warning:</strong> The Kill Switch will completely destroy your Hermes Agent and permanently wipe all its memory, skills, and configuration data. This action cannot be undone.
+                </p>
+                <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=killswitch" class="btn btn-danger fw-bold rounded-3 px-4 py-2 text-nowrap shadow-sm flex-shrink-0" onclick="return confirm('WARNING: Are you absolutely sure? All data will be lost forever and the agent will be terminated. Click OK to proceed.');">
+                    <i class="fas fa-skull-crossbones me-2"></i> Execute Kill Switch
+                </a>
+            </div>
+        </div>
     </div>
 </div>
 
-<div id="hermes-toast" class="clipboard-toast">Copied to clipboard!</div>
+<!-- Bootstrap 5 Toast Container for Clipboard Notifications -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1080;">
+    <div id="hermesToast" class="toast align-items-center text-white bg-success border-0" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="d-flex">
+            <div class="toast-body fw-bold" id="hermesToastMsg">
+                Copied to clipboard!
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+    </div>
+</div>
 
 <script>
     function copyToClipboard(text, message) {
-        var dummy = document.createElement("textarea");
-        document.body.appendChild(dummy);
-        dummy.value = text;
-        dummy.select();
-        document.execCommand("copy");
-        document.body.removeChild(dummy);
-        
-        var toast = document.getElementById("hermes-toast");
-        toast.innerText = message;
-        toast.classList.add("toast-show");
-        
-        setTimeout(function() {
-            toast.classList.remove("toast-show");
-        }, 2500);
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(() => { showToast(message); });
+        } else {
+            var dummy = document.createElement("textarea");
+            document.body.appendChild(dummy);
+            dummy.value = text;
+            dummy.select();
+            document.execCommand("copy");
+            document.body.removeChild(dummy);
+            showToast(message);
+        }
+    }
+
+    function showToast(message) {
+        var toastEl = document.getElementById('hermesToast');
+        var toastMsg = document.getElementById('hermesToastMsg');
+        if(toastEl && toastMsg) {
+            toastMsg.innerText = message;
+            // Check if bootstrap is available (WHMCS 9.0 native)
+            if (typeof bootstrap !== 'undefined' && bootstrap.Toast) {
+                var toast = new bootstrap.Toast(toastEl, { delay: 2500 });
+                toast.show();
+            } else {
+                // Fallback if bootstrap JS isn't loaded for some reason
+                toastEl.classList.add('show');
+                setTimeout(() => toastEl.classList.remove('show'), 2500);
+            }
+        }
     }
 
     function togglePasswordVisibility() {
@@ -877,49 +919,71 @@
         }
     }
 
-    function toggleApiKeyVisibility() {
-        var keyField = document.getElementById("api-key-val");
-        var btn = document.getElementById("toggle-api-btn");
-        if (keyField.style.webkitTextSecurity === "disc" || keyField.style.webkitTextSecurity === "") {
-            keyField.style.webkitTextSecurity = "none";
-            btn.innerHTML = '<i class="far fa-eye-slash"></i>';
+    function copyHermesWidgetCode(event) {
+        var copyText = document.getElementById("hermesWidgetCode");
+        copyText.select();
+        copyText.setSelectionRange(0, 99999);
+        
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(copyText.value).then(handleWidgetCopySuccess);
         } else {
-            keyField.style.webkitTextSecurity = "disc";
-            btn.innerHTML = '<i class="far fa-eye"></i>';
+            document.execCommand("copy");
+            handleWidgetCopySuccess();
+        }
+        
+        function handleWidgetCopySuccess() {
+            const btn = event.currentTarget;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-success');
+            setTimeout(function() {
+                btn.innerHTML = originalHtml;
+                btn.classList.remove('btn-success');
+                btn.classList.add('btn-primary');
+            }, 2000);
         }
     }
 
-    // Modern SaaS Overhaul: Remove WHMCS Default Clutter
+    // Modern SaaS Overhaul: Remove WHMCS Default Clutter more safely
     document.addEventListener("DOMContentLoaded", function() {
-        // 1. Move our beautiful Hermes container to the very top of the tab content
-        const hermesContainer = document.querySelector('.hermes-container');
-        const tabContent = hermesContainer.closest('.tab-pane') || hermesContainer.closest('.product-details') || hermesContainer.closest('.card-body') || document.querySelector('#Primary_Sidebar')?.parentElement;
+        const hermesWrapper = document.querySelector('.hermes-wrapper');
         
-        if (hermesContainer && tabContent) {
-            tabContent.insertBefore(hermesContainer, tabContent.firstChild);
+        // Find the main container tab content
+        const tabContent = hermesWrapper?.closest('.tab-pane') || 
+                           hermesWrapper?.closest('.product-details') || 
+                           document.querySelector('#Primary_Sidebar')?.parentElement ||
+                           document.querySelector('.client-area-content');
+        
+        if (hermesWrapper && tabContent) {
+            // Move to top
+            tabContent.insertBefore(hermesWrapper, tabContent.firstChild);
         }
 
-        // 2. Hide all the bulky default WHMCS panels (Service Overview, cPanel, Additional Info)
-        const allCards = document.querySelectorAll('.card, .panel, .box, .mb-4, .row');
-        allCards.forEach(card => {
-            // Don't hide our own container!
-            if (card.classList.contains('hermes-container') || card.closest('.hermes-container')) return;
+        // Hide default panels securely
+        requestAnimationFrame(() => {
+            const elementsToHide = document.querySelectorAll('.card, .panel, .mb-4, .row');
+            elementsToHide.forEach(el => {
+                if (el.classList.contains('hermes-wrapper') || el.closest('.hermes-wrapper')) return;
+                
+                const text = el.innerText.toLowerCase();
+                if (
+                    text.includes('cpanel') || 
+                    text.includes('service overview') || 
+                    text.includes('additional information') ||
+                    text.includes('registration date')
+                ) {
+                    el.style.display = 'none';
+                    el.style.opacity = '0';
+                }
+            });
             
-            const text = card.innerText.toLowerCase();
-            if (
-                text.includes('cpanel') || 
-                text.includes('service overview') || 
-                text.includes('additional information') ||
-                text.includes('registration date')
-            ) {
-                card.style.display = 'none';
-            }
-        });
-        
-        // 3. Specifically target images with cpanel logos just in case
-        document.querySelectorAll('img[src*="cpanel"]').forEach(img => {
-            const wrapper = img.closest('.card') || img.closest('.panel') || img.closest('.row');
-            if (wrapper) wrapper.style.display = 'none';
+            document.querySelectorAll('img[src*="cpanel"]').forEach(img => {
+                const wrapper = img.closest('.card') || img.closest('.panel') || img.closest('.row');
+                if (wrapper && !wrapper.closest('.hermes-wrapper')) {
+                    wrapper.style.display = 'none';
+                }
+            });
         });
     });
 </script>
