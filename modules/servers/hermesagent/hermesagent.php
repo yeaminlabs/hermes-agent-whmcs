@@ -740,14 +740,28 @@ YAML;
         $isSecure = !empty($params['serversecure']) && ($params['serversecure'] === true || $params['serversecure'] === 'on' || $params['serversecure'] === '1');
         $bindIp = $isSecure ? "127.0.0.1" : "0.0.0.0";
         
-        // Remove existing container
+        // Remove existing container and its dedicated network
         $setupCmds .= "docker rm -f \"hermes-{$serviceid}\" 2>/dev/null || true\n";
+        $setupCmds .= "docker network rm \"hermes-net-{$serviceid}\" 2>/dev/null || true\n";
+        // Per-customer isolated bridge — containers cannot reach each other's networks
+        $setupCmds .= "docker network create --driver bridge \"hermes-net-{$serviceid}\" >/dev/null\n";
 
-        // Run container — port 3000 is the hosting port for user-deployed projects
+        // Run container with hardened security flags:
+        // --network hermes-net-{id}   : isolated per-customer network, no inter-container routing
+        // --cap-drop ALL              : strip all Linux capabilities (no raw sockets, no mounts, etc.)
+        // --security-opt no-new-privileges : prevent setuid/sudo privilege escalation inside container
+        // --pids-limit 200            : block fork bombs
+        // --ipc=none                  : disable shared memory IPC between containers
+        // Port 3000 is the user project hosting port, always localhost-only so Caddy is the only entry point
         $setupCmds .= "docker run -d \\
   --name \"hermes-{$serviceid}\" \\
+  --network \"hermes-net-{$serviceid}\" \\
   --restart unless-stopped \\
   --cpus=\"{$cpus}\" --memory=\"{$memory}\" \\
+  --pids-limit 200 \\
+  --cap-drop ALL \\
+  --security-opt no-new-privileges \\
+  --ipc=none \\
   --env-file \"{$dataDir}/.env\" \\
   -v \"{$dataDir}:/opt/data\" \\
   -p \"{$bindIp}:{$dashPort}:9119\" \\
@@ -1016,6 +1030,7 @@ function hermesagent_TerminateAccount($params) {
         $cmd = "mkdir -p /srv/hermes/archive && \\\n";
         $cmd .= "tar -czf \"/srv/hermes/archive/hermes-{$serviceid}-\$(date +%Y%m%d%H%M%S).tar.gz\" -C /srv/hermes/{$serviceid} data 2>/dev/null || true && \\\n";
         $cmd .= "docker rm -fv \"hermes-{$serviceid}\" 2>/dev/null || true && \\\n";
+        $cmd .= "docker network rm \"hermes-net-{$serviceid}\" 2>/dev/null || true && \\\n";
         $cmd .= "rm -rf \"/srv/hermes/{$serviceid}\" && \\\n";
         $cmd .= "if [ -f \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\" ]; then\n";
         $cmd .= "  rm -f \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n";
