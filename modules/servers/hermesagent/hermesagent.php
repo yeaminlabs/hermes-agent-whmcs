@@ -38,9 +38,7 @@ function hermesagent_ConfigOptions() {
         'llm_provider' => [
             'FriendlyName' => 'LLM Provider',
             'Type' => 'dropdown',
-            'Options' => [
-                'free-tier'   => 'SNBD API (NO API NEEDED)',
-            ],
+            'Options' => 'free-tier|SNBD API (NO API NEEDED)',
             'Default' => 'free-tier',
             'Description' => 'Powered by api-proxy.snbdhost.com. You can add your own provider API keys later from the Client Area.',
         ],
@@ -127,6 +125,7 @@ function hermesagent_setup_database() {
                     $table->integer('serviceid')->unique();
                     $table->integer('dash_port');
                     $table->integer('api_port');
+                    $table->integer('host_port')->default(0);
                     $table->string('dashboard_username');
                     $table->string('dashboard_password');
                     $table->string('dashboard_secret');
@@ -149,6 +148,11 @@ function hermesagent_setup_database() {
                     $table->string('litellm_key_value', 128)->nullable();
                 });
             }
+            if (!Capsule::schema()->hasColumn('mod_hermesagent_instances', 'host_port')) {
+                Capsule::schema()->table('mod_hermesagent_instances', function ($table) {
+                    $table->integer('host_port')->default(0);
+                });
+            }
         }
     } catch (\Exception $e) {
         logActivity("HermesAgent database setup failed: " . $e->getMessage());
@@ -156,36 +160,42 @@ function hermesagent_setup_database() {
 }
 
 /**
- * Allocate dashboard and API ports deterministically with collision detection.
+ * Allocate dashboard, API, and hosting ports deterministically with collision detection.
  */
 function hermesagent_allocate_ports($serviceid) {
     $dashBase = 9119;
-    $apiBase = 8642;
-    
+    $apiBase  = 8642;
+    $hostBase = 7300; // port for Hermes-hosted projects (mapped to container :3000)
+
     $dashPort = $dashBase + ($serviceid % 1000);
-    $apiPort = $apiBase + ($serviceid % 1000);
-    
+    $apiPort  = $apiBase  + ($serviceid % 1000);
+    $hostPort = $hostBase + ($serviceid % 1000);
+
     $attempts = 0;
     while ($attempts < 500) {
         $exists = Capsule::table('mod_hermesagent_instances')
             ->where('serviceid', '!=', $serviceid)
-            ->where(function($query) use ($dashPort, $apiPort) {
+            ->where(function($query) use ($dashPort, $apiPort, $hostPort) {
                 $query->where('dash_port', $dashPort)
                       ->orWhere('api_port', $apiPort)
                       ->orWhere('dash_port', $apiPort)
-                      ->orWhere('api_port', $dashPort);
+                      ->orWhere('api_port', $dashPort)
+                      ->orWhere('host_port', $hostPort)
+                      ->orWhere('dash_port', $hostPort)
+                      ->orWhere('api_port',  $hostPort);
             })->exists();
-            
+
         if (!$exists) {
-            return [$dashPort, $apiPort];
+            return [$dashPort, $apiPort, $hostPort];
         }
-        
+
         $dashPort++;
         $apiPort++;
+        $hostPort++;
         $attempts++;
     }
-    
-    return [rand(10000, 20000), rand(20001, 30000)];
+
+    return [rand(10000, 20000), rand(20001, 30000), rand(7000, 7999)];
 }
 
 /**
@@ -476,19 +486,21 @@ function hermesagent_CreateAccount($params) {
     if ($record) {
         $dashPort = $record->dash_port;
         $apiPort = $record->api_port;
+        $hostPort = $record->host_port ?: (7300 + ($serviceid % 1000));
         $dashboardPassword = $record->dashboard_password;
         $dashboardSecret = $record->dashboard_secret ?: bin2hex(random_bytes(16));
         $apiKey = $record->api_key;
     } else {
-        list($dashPort, $apiPort) = hermesagent_allocate_ports($serviceid);
+        list($dashPort, $apiPort, $hostPort) = hermesagent_allocate_ports($serviceid);
         $dashboardPassword = hermesagent_generate_random_password(16);
         $dashboardSecret = bin2hex(random_bytes(16));
         $apiKey = bin2hex(random_bytes(16));
-        
+
         $insertData = [
             'serviceid' => $serviceid,
             'dash_port' => $dashPort,
-            'api_port' => $apiPort,
+            'api_port'  => $apiPort,
+            'host_port' => $hostPort,
             'dashboard_username' => $dashboardUsername,
             'dashboard_password' => $dashboardPassword,
             'dashboard_secret' => $dashboardSecret,
@@ -633,6 +645,23 @@ function hermesagent_CreateAccount($params) {
         
         $envContent = implode("\n", $envLines) . "\n";
         
+        // Hosting subdomain for self-hosted projects
+        $hostname = "hermes.deltadns.xyz";
+        $hostingUrl = "https://hermes-app-{$serviceid}.{$hostname}";
+
+        // System prompt that tells Hermes it can host projects
+        $systemPrompt = "You are Hermes, an AI agent running inside a Docker container on an SNBD HOST server. "
+            . "You have full terminal access to your container via the `terminal` tool and can run any shell command. "
+            . "IMPORTANT — you CAN host files and web projects for the user. Here is how:\n"
+            . "1. Write the project files using `write_file` or by echoing them via the terminal.\n"
+            . "2. Start a web server bound to 0.0.0.0:3000 inside this container. "
+            . "   Examples: `python3 -m http.server 3000`, `npx serve -l 3000`, `node server.js` (if it listens on 3000), etc.\n"
+            . "3. Tell the user their project is live at: {$hostingUrl}\n"
+            . "Port 3000 inside this container is publicly reachable at that URL via our reverse proxy. "
+            . "You do NOT need SSH access to an external server — you are already ON the hosting server. "
+            . "Always use port 3000 for hosted projects. Only one project can be served at a time; "
+            . "kill the previous server before starting a new one (`pkill -f 'http.server\\|serve\\|node' || true`).";
+
         // Generate config.yaml
         if ($isFreeTier) {
             // For the SNBD proxy tier, use a proper model dict so Hermes routes
@@ -648,6 +677,7 @@ model:
   provider: custom
   base_url: "{$proxyBaseUrl}"
   api_key: "{$proxyApiKey}"
+system_prompt: "{$systemPrompt}"
 dashboard:
   show_token_analytics: true
 tool_loop_guardrails:
@@ -666,6 +696,7 @@ model_list:
   - model_name: "{$modelName}"
     litellm_params:
       model: "bedrock/{$modelName}"
+system_prompt: "{$systemPrompt}"
 dashboard:
   show_token_analytics: true
 tool_loop_guardrails:
@@ -680,6 +711,7 @@ YAML;
         } else {
             $yamlContent = <<<YAML
 model: "{$llmProvider}/{$modelName}"
+system_prompt: "{$systemPrompt}"
 dashboard:
   show_token_analytics: true
 tool_loop_guardrails:
@@ -710,8 +742,8 @@ YAML;
         
         // Remove existing container
         $setupCmds .= "docker rm -f \"hermes-{$serviceid}\" 2>/dev/null || true\n";
-        
-        // Run container
+
+        // Run container — port 3000 is the hosting port for user-deployed projects
         $setupCmds .= "docker run -d \\
   --name \"hermes-{$serviceid}\" \\
   --restart unless-stopped \\
@@ -720,6 +752,7 @@ YAML;
   -v \"{$dataDir}:/opt/data\" \\
   -p \"{$bindIp}:{$dashPort}:9119\" \\
   -p \"{$bindIp}:{$apiPort}:8642\" \\
+  -p \"127.0.0.1:{$hostPort}:3000\" \\
   nousresearch/hermes-agent:{$dockerImageTag} gateway run\n";
         
         // Inject SNBD HOST branding and GTM into the compiled web dashboard
@@ -757,10 +790,13 @@ HTML;
         $setupCmds .= "docker exec -i \"hermes-{$serviceid}\" sh -c \"cat >> /opt/hermes/hermes_cli/web_dist/index.html\" < \"{$dataDir}/branding.html\"\n";
         
         // Add Reverse Proxy config if Caddy is present and secure is active
-        $hostname = "hermes.deltadns.xyz";
+        // ($hostname already set above when building the system prompt)
         $caddyConfig = <<<CADDY
 hermes-{$serviceid}.{$hostname} {
     reverse_proxy 127.0.0.1:{$dashPort}
+}
+hermes-app-{$serviceid}.{$hostname} {
+    reverse_proxy 127.0.0.1:{$hostPort}
 }
 CADDY;
         if ($apiEnabledVal) {
@@ -845,12 +881,17 @@ function hermesagent_SuspendAccount($params) {
         $hostname = "hermes.deltadns.xyz";
         $enableApiServer = hermesagent_resolve_param($params, 'configoption8', 'Enable OpenAI-Compatible API', 'no');
         $apiEnabledVal = ($enableApiServer === 'yes' || $enableApiServer === 'on' || $enableApiServer === '1');
-        
+
         $suspendedHtml = "<!DOCTYPE html><html><head><title>Account Suspended</title><style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f9fafb;color:#111827;} .box{text-align:center;padding:40px;background:white;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);max-width:500px;} h1{color:#dc2626;margin-top:0;} p{color:#4b5563;line-height:1.5;}</style></head><body><div class=\"box\"><h1>Account Suspended</h1><p>Your Hermes Agent account has been suspended.</p><p>Please check your billing status or contact support to reactivate your service.</p></div></body></html>";
-        
+
         $caddySuspended = <<<CADDY
 hermes-{$serviceid}.{$hostname} {
     respond `{$suspendedHtml}` 403 {
+        close
+    }
+}
+hermes-app-{$serviceid}.{$hostname} {
+    respond `{"error":"Account Suspended"}` 403 {
         close
     }
 }
@@ -906,21 +947,25 @@ function hermesagent_UnsuspendAccount($params) {
         }
         
         $dashPort = $record->dash_port;
-        $apiPort = $record->api_port;
+        $apiPort  = $record->api_port;
+        $hostPort = $record->host_port ?: (7300 + ($serviceid % 1000));
         $hostname = "hermes.deltadns.xyz";
-        
+
         $enableApiServer = hermesagent_resolve_param($params, 'configoption8', 'Enable OpenAI-Compatible API', 'no');
         $apiEnabledVal = ($enableApiServer === 'yes' || $enableApiServer === 'on' || $enableApiServer === '1');
-        
+
         $caddyConfig = <<<CADDY
 hermes-{$serviceid}.{$hostname} {
     reverse_proxy 127.0.0.1:{$dashPort}
+}
+hermes-app-{$serviceid}.{$hostname} {
+    reverse_proxy 127.0.0.1:{$hostPort}
 }
 CADDY;
         if ($apiEnabledVal) {
             $caddyConfig .= "\nhermes-api-{$serviceid}.{$hostname} {\n    reverse_proxy 127.0.0.1:{$apiPort}\n}";
         }
-        
+
         $cmd = "docker start \"hermes-{$serviceid}\"";
         $cmd .= " && if [ -d \"/etc/caddy/conf.d\" ]; then\n";
         $cmd .= "  cat << 'EOF' > \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n{$caddyConfig}\nEOF\n";
