@@ -107,8 +107,8 @@ function hermesagent_ConfigOptions() {
             'FriendlyName' => 'Free Tier Default Model',
             'Type' => 'text',
             'Size' => '32',
-            'Default' => 'bedrock_mantle/google.gemma-4-e2b',
-            'Description' => 'Model name as configured in LiteLLM config.yaml (e.g. bedrock_mantle/google.gemma-4-e2b).',
+            'Default' => 'zai.glm-5',
+            'Description' => 'Model name as configured in LiteLLM config.yaml (e.g. zai.glm-5).',
         ],
     ];
 }
@@ -223,7 +223,7 @@ function hermesagent_generate_random_password($length = 16) {
 function hermesagent_litellm_config($params) {
     $url = hermesagent_resolve_param($params, 'configoption11', 'LiteLLM Gateway URL', 'https://ai-proxy.snbdhost.com');
     $key = hermesagent_resolve_param($params, 'configoption12', 'LiteLLM Master Key', 'sk-snbdhost-master-key-2026');
-    $model = hermesagent_resolve_param($params, 'configoption13', 'Free Tier Default Model', 'bedrock_mantle/google.gemma-4-e2b');
+    $model = hermesagent_resolve_param($params, 'configoption13', 'Free Tier Default Model', 'zai.glm-5');
     
     return [
         'url'   => rtrim($url, '/'),
@@ -466,7 +466,7 @@ function hermesagent_CreateAccount($params) {
     $llmProvider = 'free-tier'; // SNBD API is the only provider — always use proxy
     $providerApiKey = '';
     $customEndpointUrl = '';
-    $modelName = hermesagent_resolve_param($params, 'configoption4', 'Model', 'bedrock_mantle/google.gemma-4-e2b');
+    $modelName = hermesagent_resolve_param($params, 'configoption4', 'Model', 'zai.glm-5');
     $messagingPlatform = hermesagent_resolve_param($params, 'configoption5', 'Messaging Platform', 'None');
     $messagingToken = hermesagent_resolve_param($params, 'configoption6', 'Bot Token', '');
     $dashboardUsername = hermesagent_resolve_param($params, 'configoption7', 'Dashboard Username', 'admin');
@@ -477,7 +477,7 @@ function hermesagent_CreateAccount($params) {
     $litellmCfg = [
         'url'   => 'https://ai-proxy.snbdhost.com',
         'key'   => 'sk-snbdhost-master-key-2026',
-        'model' => 'bedrock_mantle/google.gemma-4-e2b',
+        'model' => 'zai.glm-5',
     ];
     $litellmModel = $litellmCfg['model'];
     
@@ -647,20 +647,34 @@ function hermesagent_CreateAccount($params) {
         
         // Hosting subdomain for self-hosted projects
         $hostname = "hermes.deltadns.xyz";
-        $hostingUrl = "https://hermes-app-{$serviceid}.{$hostname}";
+        $hostingUrl = "https://{$serviceid}.{$hostname}";
 
-        // System prompt that tells Hermes it can host projects
-        $systemPrompt = "You are Hermes, an AI agent running inside a Docker container on an SNBD HOST server. "
-            . "You have full terminal access to your container via the `terminal` tool and can run any shell command. "
-            . "IMPORTANT — you CAN host files and web projects for the user. Here is how:\n"
-            . "1. Write the project files using `write_file` or by echoing them via the terminal.\n"
-            . "2. Start a web server bound to 0.0.0.0:3000 inside this container. "
-            . "   Examples: `python3 -m http.server 3000`, `npx serve -l 3000`, `node server.js` (if it listens on 3000), etc.\n"
-            . "3. Tell the user their project is live at: {$hostingUrl}\n"
-            . "Port 3000 inside this container is publicly reachable at that URL via our reverse proxy. "
-            . "You do NOT need SSH access to an external server — you are already ON the hosting server. "
-            . "Always use port 3000 for hosted projects. Only one project can be served at a time; "
-            . "kill the previous server before starting a new one (`pkill -f 'http.server\\|serve\\|node' || true`).";
+        // System prompt: replace mode so our rules come first.
+        // A persistent HTTP server is pre-started on port 3000 serving /opt/data/.
+        // Caddy on the host routes /artifacts/* on the dashboard domain to that server.
+        $artifactsUrl = "https://{$serviceid}.{$hostname}/artifacts";
+        $systemPrompt = "# YOUR ENVIRONMENT\n"
+            . "You are Hermes, an AI agent running on a REAL dedicated server — not a sandbox. "
+            . "You have your own isolated space with persistent storage and a live public URL.\n\n"
+            . "# HOSTING FILES PUBLICLY\n"
+            . "A web server is ALREADY running and your files are publicly accessible at:\n"
+            . "  {$artifactsUrl}/filename\n\n"
+            . "To publish any file:\n"
+            . "1. Write it to /opt/data/artifacts/ using write_file (e.g. /opt/data/artifacts/index.html)\n"
+            . "2. Tell the user the live URL: {$artifactsUrl}/index.html\n\n"
+            . "You can confirm it is live: terminal(command=\"curl -s http://localhost:3000/artifacts/ | head -5\")\n\n"
+            . "# STRICT RULES\n"
+            . "- NEVER say you cannot host — you CAN, the URL above is publicly accessible right now\n"
+            . "- NEVER start any web server — one is already running on port 3000\n"
+            . "- NEVER use any port other than 3000\n"
+            . "- NEVER use docker commands — no socket available\n"
+            . "- ALWAYS write hosted files to /opt/data/artifacts/\n\n"
+            . "# YOUR TOOLS\n"
+            . "terminal (run shell commands), write_file, read_file, search_files, and more. "
+            . "Working directory: /opt/data. Python3, node, curl, wget are available.\n\n"
+            . "# YOUR ROLE\n"
+            . "Complete tasks fully. When asked to host something, write the file to /opt/data/artifacts/ "
+            . "and immediately give the user the public URL.";
 
         // Generate config.yaml
         if ($isFreeTier) {
@@ -760,6 +774,10 @@ YAML;
   --cpus=\"{$cpus}\" --memory=\"{$memory}\" \\
   --pids-limit 200 \\
   --cap-drop ALL \\
+  --cap-add SETUID \\
+  --cap-add SETGID \\
+  --cap-add DAC_OVERRIDE \\
+  --cap-add CHOWN \\
   --security-opt no-new-privileges \\
   --ipc=none \\
   --env-file \"{$dataDir}/.env\" \\
@@ -784,42 +802,266 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 <!-- End Google Tag Manager (noscript) -->
 
 <style>
-  .snbd-topbar { position: fixed; top: 0; left: 0; right: 0; background: #CC0000; color: white; text-align: center; padding: 10px 40px 10px 20px; font-family: 'Inter', system-ui, sans-serif; font-size: 13px; font-weight: 500; z-index: 999998; box-shadow: 0 2px 10px rgba(0,0,0,0.15); line-height: 1.4; }
-  .snbd-topbar strong { font-weight: 700; background: rgba(0,0,0,0.15); padding: 3px 8px; border-radius: 4px; margin-right: 8px; }
-  .snbd-topbar-close { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: none; border: none; color: white; font-size: 20px; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; padding: 0 5px; }
-  .snbd-topbar-close:hover { opacity: 1; }
-  body { padding-top: 40px !important; }
+  /* ── reset old topbar padding ── */
+  body { padding-top: 34px !important; }
+
+  /* ── Top Beta Bar ── */
+  #snbd-beta-bar {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 34px;
+    background: rgba(9, 9, 9, 0.97);
+    border-bottom: 1px solid rgba(255, 122, 32, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    z-index: 999999;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-size: 12px;
+    letter-spacing: 0.01em;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    overflow: hidden;
+  }
+
+  /* animated orange hairline at the very top edge */
+  #snbd-beta-bar::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent 0%, #FF7A20 40%, #FFB347 60%, transparent 100%);
+    animation: snbd-slide 4s ease-in-out infinite;
+  }
+
+  @keyframes snbd-slide {
+    0%   { left: -100%; }
+    50%  { left: 0%; }
+    100% { left: 100%; }
+  }
+
+  /* BETA pill */
+  .snbd-b-pill {
+    background: linear-gradient(130deg, #FF7A20 0%, #FFB347 100%);
+    color: #0A0A0A;
+    font-size: 9.5px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 2.5px 8px 2px;
+    border-radius: 100px;
+    line-height: 1.5;
+    flex-shrink: 0;
+  }
+
+  .snbd-b-msg {
+    color: rgba(255, 255, 255, 0.52);
+    white-space: nowrap;
+  }
+
+  .snbd-b-msg strong {
+    color: rgba(255, 255, 255, 0.82);
+    font-weight: 600;
+  }
+
+  /* brand lockup */
+  .snbd-b-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 12px;
+    margin-left: 2px;
+    border-left: 1px solid rgba(255, 255, 255, 0.09);
+    flex-shrink: 0;
+  }
+
+  .snbd-b-brand-name {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+  }
+
+  .snbd-b-brand-sub {
+    font-size: 10px;
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.28);
+    text-transform: none;
+    margin-left: -2px;
+  }
+
+  /* ── Floating Beta Badge ── */
+  #snbd-beta-float {
+    position: fixed;
+    bottom: 22px;
+    right: 18px;
+    z-index: 999999;
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    pointer-events: none;
+  }
+
+  .snbd-f-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(10, 10, 10, 0.88);
+    border: 1px solid rgba(255, 122, 32, 0.35);
+    border-radius: 100px;
+    padding: 7px 14px 7px 9px;
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    box-shadow:
+      0 0 0 1px rgba(255, 122, 32, 0.08),
+      0 8px 32px rgba(0, 0, 0, 0.6),
+      0 0 28px rgba(255, 122, 32, 0.07);
+    animation: snbd-breathe 3.5s ease-in-out infinite;
+  }
+
+  @keyframes snbd-breathe {
+    0%, 100% {
+      box-shadow:
+        0 0 0 1px rgba(255,122,32,0.08),
+        0 8px 32px rgba(0,0,0,0.6),
+        0 0 22px rgba(255,122,32,0.06);
+      border-color: rgba(255,122,32,0.30);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px rgba(255,122,32,0.16),
+        0 8px 32px rgba(0,0,0,0.6),
+        0 0 36px rgba(255,122,32,0.16);
+      border-color: rgba(255,122,32,0.55);
+    }
+  }
+
+  .snbd-f-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #FF7A20;
+    flex-shrink: 0;
+    animation: snbd-dot 3.5s ease-in-out infinite;
+  }
+
+  @keyframes snbd-dot {
+    0%, 100% { opacity: 1; box-shadow: 0 0 5px #FF7A20; }
+    50%       { opacity: 0.45; box-shadow: 0 0 2px #FF7A20; }
+  }
+
+  .snbd-f-inner {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    line-height: 1;
+  }
+
+  .snbd-f-label {
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #FF9A50;
+  }
+
+  .snbd-f-sub {
+    font-size: 9.5px;
+    font-weight: 400;
+    letter-spacing: 0.03em;
+    color: rgba(255, 255, 255, 0.3);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #snbd-beta-bar::before,
+    .snbd-f-badge,
+    .snbd-f-dot { animation: none; }
+  }
 </style>
-<div class="snbd-topbar" id="snbd-topbar">
-  <strong>AI is powered by Nvidia models already installed, free use for 15 days.</strong>
-  <button class="snbd-topbar-close" onclick="document.getElementById('snbd-topbar').style.display='none'" title="Dismiss">&times;</button>
+
+<!-- Beta Banner -->
+<div id="snbd-beta-bar">
+  <span class="snbd-b-pill">Beta</span>
+  <span class="snbd-b-msg">We're actively building this — <strong>your feedback shapes what comes next.</strong></span>
+  <div class="snbd-b-brand">
+    <span class="snbd-b-brand-name">SNBD HOST <span class="snbd-b-brand-sub">&thinsp;·&thinsp; DeltaDNS</span></span>
+  </div>
+</div>
+
+<!-- Persistent Floating Beta Badge -->
+<div id="snbd-beta-float">
+  <div class="snbd-f-badge">
+    <div class="snbd-f-dot"></div>
+    <div class="snbd-f-inner">
+      <span class="snbd-f-label">Beta</span>
+      <span class="snbd-f-sub">SNBD HOST</span>
+    </div>
+  </div>
 </div>
 HTML;
         
-        $setupCmds .= "sleep 3\n"; // wait a moment for container filesystem to be ready
+        $setupCmds .= "sleep 5\n"; // wait for container filesystem and hermes init to settle
+
+        // Pre-start the public HTTP server on port 3000 serving /opt/data/.
+        // Caddy on the host routes /artifacts/* on the dashboard domain to this server.
+        // The model just writes files to /opt/data/artifacts/ — no server management needed.
+        $setupCmds .= "docker exec hermes-{$serviceid} sh -c 'mkdir -p /opt/data/artifacts'\n";
+        $setupCmds .= "docker exec hermes-{$serviceid} sh -c 'pkill -f \"http.server\" 2>/dev/null || true'\n";
+        $setupCmds .= "docker exec hermes-{$serviceid} sh -c 'nohup python3 -m http.server 3000 --directory /opt/data > /tmp/srv.log 2>&1 &'\n";
+        $setupCmds .= "sleep 2\n";
+        $setupCmds .= "docker exec hermes-{$serviceid} sh -c 'curl -sf http://localhost:3000 > /dev/null && echo \"HTTP:3000 OK\" || echo \"HTTP:3000 FAILED\"'\n";
+
+        // Patch config.yaml via Python to inject system_prompt and terminal backend.
+        // Hermes expands the initial config.yaml on first boot and may drop fields we wrote —
+        // this step runs AFTER the container is up to ensure the values survive the expansion.
+        $escapedSystemPrompt = addslashes($systemPrompt);
+        $escapedHostingUrl   = addslashes($hostingUrl);
+        $setupCmds .= "python3 - << 'PYEOF'\n";
+        $setupCmds .= "import yaml\n";
+        $setupCmds .= "cfg_path = '{$dataDir}/config.yaml'\n";
+        $setupCmds .= "try:\n";
+        $setupCmds .= "    with open(cfg_path) as f:\n";
+        $setupCmds .= "        cfg = yaml.safe_load(f) or {}\n";
+        $setupCmds .= "except Exception:\n";
+        $setupCmds .= "    cfg = {}\n";
+        $setupCmds .= "cfg['system_prompt'] = {'replace': '{$escapedSystemPrompt}'}\n";
+        $setupCmds .= "if isinstance(cfg.get('model'), dict):\n";
+        $setupCmds .= "    cfg['model']['base_url'] = 'https://ai-proxy.snbdhost.com/v1'\n";
+        $setupCmds .= "    cfg['model']['api_key']  = 'sk-snbdhost-master-key-2026'\n";
+        $setupCmds .= "    cfg['model']['provider'] = 'custom'\n";
+        $setupCmds .= "    cfg['model']['default']  = 'zai.glm-5'\n";
+        $setupCmds .= "cfg['terminal'] = {'backend': 'local', 'timeout': 180, 'cwd': '/opt/data'}\n";
+        $setupCmds .= "with open(cfg_path, 'w') as f:\n";
+        $setupCmds .= "    yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True)\n";
+        $setupCmds .= "print('config patched')\n";
+        $setupCmds .= "PYEOF\n";
+
         $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"sed -i 's/<title>Hermes Agent - Dashboard<\\/title>/<title>{$dashboardUsername} Hermes Agent<\\/title>/g' /opt/hermes/hermes_cli/web_dist/index.html\"\n";
         
         // Write branding to host first to avoid escaping issues, then pipe to container
         $setupCmds .= "cat << 'BRANDING_EOF' > \"{$dataDir}/branding.html\"\n{$brandingHtml}\nBRANDING_EOF\n";
         $setupCmds .= "docker exec -i \"hermes-{$serviceid}\" sh -c \"cat >> /opt/hermes/hermes_cli/web_dist/index.html\" < \"{$dataDir}/branding.html\"\n";
         
-        // Add Reverse Proxy config if Caddy is present and secure is active
-        // ($hostname already set above when building the system prompt)
+        // {id}.hermes.deltadns.xyz is the primary domain: /artifacts/* → file server, rest → dashboard.
+        $artifactsUrl = "https://{$serviceid}.{$hostname}/artifacts";
         $caddyConfig = <<<CADDY
-hermes-{$serviceid}.{$hostname} {
-    reverse_proxy 127.0.0.1:{$dashPort}
-}
-hermes-app-{$serviceid}.{$hostname} {
-    reverse_proxy 127.0.0.1:{$hostPort}
+{$serviceid}.{$hostname} {
+    handle /artifacts/* {
+        reverse_proxy 127.0.0.1:{$hostPort}
+    }
+    handle {
+        reverse_proxy 127.0.0.1:{$dashPort}
+    }
 }
 CADDY;
         if ($apiEnabledVal) {
-            $caddyConfig .= "\nhermes-api-{$serviceid}.{$hostname} {\n    reverse_proxy 127.0.0.1:{$apiPort}\n}";
+            $caddyConfig .= "\n{$serviceid}-api.{$hostname} {\n    reverse_proxy 127.0.0.1:{$apiPort}\n}";
         }
-        
+
         $setupCmds .= "if which caddy >/dev/null 2>&1; then\n";
         $setupCmds .= "  mkdir -p /etc/caddy/conf.d\n";
-        $setupCmds .= "  cat << 'EOF' > \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n{$caddyConfig}\nEOF\n";
+        $setupCmds .= "  cat << 'EOF' > \"/etc/caddy/conf.d/{$serviceid}.conf\"\n{$caddyConfig}\nEOF\n";
         $setupCmds .= "  if ! grep -q \"import conf.d/\*.conf\" /etc/caddy/Caddyfile; then\n";
         $setupCmds .= "    echo \"import conf.d/*.conf\" >> /etc/caddy/Caddyfile\n";
         $setupCmds .= "  fi\n";
@@ -899,24 +1141,19 @@ function hermesagent_SuspendAccount($params) {
         $suspendedHtml = "<!DOCTYPE html><html><head><title>Account Suspended</title><style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;background:#f9fafb;color:#111827;} .box{text-align:center;padding:40px;background:white;border-radius:8px;box-shadow:0 4px 6px rgba(0,0,0,0.1);max-width:500px;} h1{color:#dc2626;margin-top:0;} p{color:#4b5563;line-height:1.5;}</style></head><body><div class=\"box\"><h1>Account Suspended</h1><p>Your Hermes Agent account has been suspended.</p><p>Please check your billing status or contact support to reactivate your service.</p></div></body></html>";
 
         $caddySuspended = <<<CADDY
-hermes-{$serviceid}.{$hostname} {
+{$serviceid}.{$hostname} {
     respond `{$suspendedHtml}` 403 {
-        close
-    }
-}
-hermes-app-{$serviceid}.{$hostname} {
-    respond `{"error":"Account Suspended"}` 403 {
         close
     }
 }
 CADDY;
         if ($apiEnabledVal) {
-            $caddySuspended .= "\nhermes-api-{$serviceid}.{$hostname} {\n    respond `{\"error\":\"Account Suspended\"}` 403 {\n        close\n    }\n}";
+            $caddySuspended .= "\n{$serviceid}-api.{$hostname} {\n    respond `{\"error\":\"Account Suspended\"}` 403 {\n        close\n    }\n}";
         }
-        
+
         $cmd = "docker stop \"hermes-{$serviceid}\"";
         $cmd .= " && if [ -d \"/etc/caddy/conf.d\" ]; then\n";
-        $cmd .= "  cat << 'EOF' > \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n{$caddySuspended}\nEOF\n";
+        $cmd .= "  cat << 'EOF' > \"/etc/caddy/conf.d/{$serviceid}.conf\"\n{$caddySuspended}\nEOF\n";
         $cmd .= "  systemctl reload caddy || caddy reload --config /etc/caddy/Caddyfile || true\n";
         $cmd .= "fi";
         
@@ -969,20 +1206,22 @@ function hermesagent_UnsuspendAccount($params) {
         $apiEnabledVal = ($enableApiServer === 'yes' || $enableApiServer === 'on' || $enableApiServer === '1');
 
         $caddyConfig = <<<CADDY
-hermes-{$serviceid}.{$hostname} {
-    reverse_proxy 127.0.0.1:{$dashPort}
-}
-hermes-app-{$serviceid}.{$hostname} {
-    reverse_proxy 127.0.0.1:{$hostPort}
+{$serviceid}.{$hostname} {
+    handle /artifacts/* {
+        reverse_proxy 127.0.0.1:{$hostPort}
+    }
+    handle {
+        reverse_proxy 127.0.0.1:{$dashPort}
+    }
 }
 CADDY;
         if ($apiEnabledVal) {
-            $caddyConfig .= "\nhermes-api-{$serviceid}.{$hostname} {\n    reverse_proxy 127.0.0.1:{$apiPort}\n}";
+            $caddyConfig .= "\n{$serviceid}-api.{$hostname} {\n    reverse_proxy 127.0.0.1:{$apiPort}\n}";
         }
 
         $cmd = "docker start \"hermes-{$serviceid}\"";
         $cmd .= " && if [ -d \"/etc/caddy/conf.d\" ]; then\n";
-        $cmd .= "  cat << 'EOF' > \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n{$caddyConfig}\nEOF\n";
+        $cmd .= "  cat << 'EOF' > \"/etc/caddy/conf.d/{$serviceid}.conf\"\n{$caddyConfig}\nEOF\n";
         $cmd .= "  systemctl reload caddy || caddy reload --config /etc/caddy/Caddyfile || true\n";
         $cmd .= "fi";
         
@@ -1032,11 +1271,11 @@ function hermesagent_TerminateAccount($params) {
         $cmd .= "docker rm -fv \"hermes-{$serviceid}\" 2>/dev/null || true && \\\n";
         $cmd .= "docker network rm \"hermes-net-{$serviceid}\" 2>/dev/null || true && \\\n";
         $cmd .= "rm -rf \"/srv/hermes/{$serviceid}\" && \\\n";
-        $cmd .= "if [ -f \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\" ]; then\n";
-        $cmd .= "  rm -f \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n";
+        $cmd .= "if [ -f \"/etc/caddy/conf.d/{$serviceid}.conf\" ]; then\n";
+        $cmd .= "  rm -f \"/etc/caddy/conf.d/{$serviceid}.conf\"\n";
         $cmd .= "  systemctl reload caddy || caddy reload --config /etc/caddy/Caddyfile || true\n";
         $cmd .= "fi";
-        
+
         $result = $ssh->exec($cmd);
         logModuleCall('hermesagent', 'TerminateAccount', $cmd, $result);
         
@@ -1255,8 +1494,8 @@ function hermesagent_killswitch($params) {
         // Hard wipe container and data directory
         $cmd = "docker rm -fv \"hermes-{$serviceid}\" 2>/dev/null || true && \\\n";
         $cmd .= "rm -rf \"/srv/hermes/{$serviceid}\" && \\\n";
-        $cmd .= "if [ -f \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\" ]; then\n";
-        $cmd .= "  rm -f \"/etc/caddy/conf.d/hermes-{$serviceid}.conf\"\n";
+        $cmd .= "if [ -f \"/etc/caddy/conf.d/{$serviceid}.conf\" ]; then\n";
+        $cmd .= "  rm -f \"/etc/caddy/conf.d/{$serviceid}.conf\"\n";
         $cmd .= "  systemctl reload caddy || caddy reload --config /etc/caddy/Caddyfile || true\n";
         $cmd .= "fi";
         
@@ -1466,11 +1705,41 @@ function hermesagent_update_llm($params) {
     }
 }
 
+// ═══════════════════════════════════════════════════════════════
+//  Domain Management
+// ═══════════════════════════════════════════════════════════════
+
+function hermesagent_setup_domains_db() {
+    if (!Capsule::schema()->hasTable('mod_hermesagent_domains')) {
+        Capsule::schema()->create('mod_hermesagent_domains', function ($t) {
+            $t->increments('id');
+            $t->integer('service_id')->unsigned()->index();
+            $t->string('domain', 255)->unique();
+            $t->enum('type', ['hermes', 'custom'])->default('hermes');
+            $t->enum('status', ['active', 'pending', 'failed'])->default('pending');
+            $t->timestamps();
+        });
+    }
+}
+
+function hermesagent_domain_write_caddy($ssh, $serviceid, $domain, $hostPort, $dashPort) {
+    $conf = "{$domain} {\n    handle /artifacts/* {\n        reverse_proxy 127.0.0.1:{$hostPort}\n    }\n    handle {\n        reverse_proxy 127.0.0.1:{$dashPort}\n    }\n}\n";
+    $file = '/etc/caddy/conf.d/' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $domain) . '.conf';
+    $b64  = base64_encode($conf);
+    $ssh->exec("echo '" . $b64 . "' | base64 -d > " . escapeshellarg($file) . " && systemctl reload caddy 2>/dev/null || true");
+}
+
+function hermesagent_domain_remove_caddy($ssh, $domain) {
+    $file = '/etc/caddy/conf.d/' . preg_replace('/[^a-zA-Z0-9._-]/', '_', $domain) . '.conf';
+    $ssh->exec("rm -f " . escapeshellarg($file) . " && systemctl reload caddy 2>/dev/null || true");
+}
+
 /**
  * Client Area Output page
  */
 function hermesagent_ClientArea($params) {
     hermesagent_setup_database();
+    hermesagent_setup_domains_db();
     $serviceid = intval($params['serviceid']);
     
     $record = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceid)->first();
@@ -1499,8 +1768,8 @@ function hermesagent_ClientArea($params) {
     $apiUrl = '';
     
     if ($isSecure) {
-        $dashboardUrl = "https://hermes-{$serviceid}.hermes.deltadns.xyz";
-        $apiUrl = "https://hermes-api-{$serviceid}.hermes.deltadns.xyz/v1";
+        $dashboardUrl = "https://{$serviceid}.hermes.deltadns.xyz";
+        $apiUrl = "https://{$serviceid}-api.hermes.deltadns.xyz/v1";
     } else {
         $dashboardUrl = "http://{$host}:{$record->dash_port}";
         $apiUrl = "http://{$host}:{$record->api_port}/v1";
@@ -1580,10 +1849,27 @@ function hermesagent_ClientArea($params) {
     
     $createdAtTime = strtotime($record->created_at);
     $daysRemaining = 'Lifetime';
-    
+
     $totalUsed = intval($promptTokens) + intval($completionTokens);
     $tokenLimit = 10000000;
     $percentUsed = min(100, ($totalUsed / $tokenLimit) * 100);
+
+    // Domain management
+    $serverIp    = '46.62.205.66';
+    $defaultDomain = $serviceid . '.hermes.deltadns.xyz';
+    if (!Capsule::table('mod_hermesagent_domains')->where('domain', $defaultDomain)->exists()) {
+        Capsule::table('mod_hermesagent_domains')->insert([
+            'service_id' => $serviceid, 'domain' => $defaultDomain,
+            'type' => 'hermes', 'status' => 'active',
+            'created_at' => date('Y-m-d H:i:s'), 'updated_at' => date('Y-m-d H:i:s'),
+        ]);
+    }
+    $domainsRows = Capsule::table('mod_hermesagent_domains')
+        ->where('service_id', $serviceid)->orderBy('created_at')->get();
+    $domains = [];
+    foreach ($domainsRows as $d) {
+        $domains[] = (array)$d;
+    }
 
     return [
         'templatefile' => 'templates/clientarea',
@@ -1606,7 +1892,11 @@ function hermesagent_ClientArea($params) {
             'days_remaining' => $daysRemaining,
             'total_used' => $totalUsed,
             'token_limit' => $tokenLimit,
-            'percent_used' => $percentUsed
+            'percent_used' => $percentUsed,
+            'domains' => $domains,
+            'default_domain' => $defaultDomain,
+            'server_ip' => $serverIp,
+            'serviceid' => $serviceid,
         ]
     ];
 }

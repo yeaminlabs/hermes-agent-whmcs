@@ -845,6 +845,125 @@
         </div>
     </div>
 
+    <!-- Domain Management -->
+    <div class="card mb-4">
+        <div class="card-header d-flex align-items-center justify-content-between">
+            <span><i class="fas fa-globe me-2 text-primary"></i> Domain Management</span>
+            <button class="btn btn-sm btn-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#addDomainModal">
+                <i class="fas fa-plus me-1"></i> Add Domain
+            </button>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0" id="domainsTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Domain</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th class="text-end pe-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {foreach $domains as $dom}
+                        <tr id="domrow-{$dom.id}">
+                            <td class="ps-4 fw-semibold" style="font-family: monospace; font-size: 13px;">{$dom.domain}</td>
+                            <td>
+                                {if $dom.type === 'hermes'}
+                                <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill px-3">Hermes</span>
+                                {else}
+                                <span class="badge bg-secondary bg-opacity-10 text-secondary rounded-pill px-3">Custom</span>
+                                {/if}
+                            </td>
+                            <td>
+                                {if $dom.status === 'active'}
+                                <span class="badge bg-success bg-opacity-10 text-success rounded-pill px-3"><i class="fas fa-circle me-1" style="font-size:8px;"></i>Active</span>
+                                {elseif $dom.status === 'pending'}
+                                <span class="badge bg-warning bg-opacity-10 text-warning rounded-pill px-3"><i class="fas fa-clock me-1" style="font-size:8px;"></i>Pending DNS</span>
+                                {else}
+                                <span class="badge bg-danger bg-opacity-10 text-danger rounded-pill px-3">Failed</span>
+                                {/if}
+                            </td>
+                            <td class="text-end pe-4">
+                                {if $dom.status === 'pending'}
+                                <button class="btn btn-xs btn-outline-warning btn-sm rounded-pill me-1" onclick="verifyDomain('{$dom.domain}', {$dom.id})">
+                                    <i class="fas fa-sync-alt me-1"></i> Verify DNS
+                                </button>
+                                {/if}
+                                {if $dom.domain !== $default_domain}
+                                <button class="btn btn-xs btn-outline-danger btn-sm rounded-pill" onclick="removeDomain({$dom.id}, '{$dom.domain}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                                {else}
+                                <span class="text-muted small">Default</span>
+                                {/if}
+                            </td>
+                        </tr>
+                        {/foreach}
+                        {if !$domains}
+                        <tr><td colspan="4" class="text-center text-muted py-4">No domains found.</td></tr>
+                        {/if}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Domain Modal -->
+    <div class="modal fade" id="addDomainModal" tabindex="-1" aria-labelledby="addDomainModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius: 16px; border: none;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold" id="addDomainModalLabel"><i class="fas fa-globe me-2 text-primary"></i> Add a Domain</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Domain Type</label>
+                        <div class="d-flex gap-3">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="domainType" id="typeHermes" value="hermes" checked onchange="toggleDomainTypeInfo()">
+                                <label class="form-check-label" for="typeHermes">Hermes Subdomain <span class="badge bg-primary bg-opacity-10 text-primary rounded-pill">Instant</span></label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="domainType" id="typeCustom" value="custom" onchange="toggleDomainTypeInfo()">
+                                <label class="form-check-label" for="typeCustom">Custom Domain</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="hermesHint" class="alert alert-primary py-2 small mb-3">
+                        <i class="fas fa-bolt me-1"></i> Hermes subdomains are provisioned instantly — no DNS setup needed. Just enter a name like <strong>myapp.hermes.deltadns.xyz</strong>.
+                    </div>
+                    <div id="customHint" class="alert alert-warning py-2 small mb-3 d-none">
+                        <i class="fas fa-info-circle me-1"></i> You'll need to add an <strong>A record</strong> for your domain pointing to <strong>{$server_ip}</strong>, then click <em>Verify DNS</em> to activate it.
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label fw-semibold">Domain</label>
+                        <input type="text" class="form-control" id="newDomainInput" placeholder="e.g. myapp.hermes.deltadns.xyz">
+                        <div id="domainError" class="text-danger small mt-1 d-none"></div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 fw-semibold" onclick="submitAddDomain()" id="addDomainBtn">
+                        <i class="fas fa-plus me-1"></i> Add Domain
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pending DNS info panel (shown after adding custom domain) -->
+    <div id="pendingDnsPanel" class="alert alert-warning mb-4 d-none">
+        <h6 class="fw-bold"><i class="fas fa-exclamation-circle me-2"></i>DNS Setup Required</h6>
+        <p class="mb-1">To activate your custom domain, create the following DNS record:</p>
+        <table class="table table-sm mb-2" style="font-family: monospace; font-size: 13px;">
+            <tr><th>Type</th><th>Name</th><th>Value</th></tr>
+            <tr><td>A</td><td id="pendingDomainName">@</td><td>{$server_ip}</td></tr>
+        </table>
+        <p class="mb-0 small text-muted">Once DNS propagates, click <strong>Verify DNS</strong> next to the domain in the table above.</p>
+    </div>
+
     <!-- Danger Zone -->
     <div class="card border-danger border-opacity-50 bg-danger bg-opacity-10 mb-4">
         <div class="card-body p-4">
@@ -943,6 +1062,97 @@
                 btn.classList.add('btn-primary');
             }, 2000);
         }
+    }
+
+    // ── Domain Management ──────────────────────────────────────────────────────
+
+    const AJAX_URL = 'modules/servers/hermesagent/ajax.php';
+    const SERVICE_ID = {$serviceid};
+
+    function toggleDomainTypeInfo() {
+        const isHermes = document.getElementById('typeHermes').checked;
+        document.getElementById('hermesHint').classList.toggle('d-none', !isHermes);
+        document.getElementById('customHint').classList.toggle('d-none', isHermes);
+    }
+
+    function submitAddDomain() {
+        const domain = document.getElementById('newDomainInput').value.trim();
+        const type   = document.querySelector('input[name="domainType"]:checked').value;
+        const errEl  = document.getElementById('domainError');
+        const btn    = document.getElementById('addDomainBtn');
+        errEl.classList.add('d-none');
+        if (!domain) { errEl.textContent = 'Please enter a domain.'; errEl.classList.remove('d-none'); return; }
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Adding…';
+
+        fetch(AJAX_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action: 'add_domain', serviceId: SERVICE_ID, domain, type })
+        })
+        .then(r => r.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plus me-1"></i> Add Domain';
+            if (!data.success) {
+                errEl.textContent = data.error || 'Unknown error';
+                errEl.classList.remove('d-none');
+                return;
+            }
+            // Close modal and reload to show new row
+            bootstrap.Modal.getInstance(document.getElementById('addDomainModal')).hide();
+            if (data.status === 'pending') {
+                document.getElementById('pendingDomainName').textContent = domain;
+                document.getElementById('pendingDnsPanel').classList.remove('d-none');
+            }
+            location.reload();
+        })
+        .catch(() => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-plus me-1"></i> Add Domain';
+            errEl.textContent = 'Request failed. Please try again.';
+            errEl.classList.remove('d-none');
+        });
+    }
+
+    function verifyDomain(domain, rowId) {
+        if (!confirm('Check DNS for ' + domain + '?')) return;
+        fetch(AJAX_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action: 'verify_domain', serviceId: SERVICE_ID, domain })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Domain activated!', 'bg-success');
+                setTimeout(() => location.reload(), 800);
+            } else {
+                alert('Verification failed: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(() => alert('Request failed.'));
+    }
+
+    function removeDomain(domainId, domain) {
+        if (!confirm('Remove domain ' + domain + '? This will delete its Caddy config.')) return;
+        fetch(AJAX_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ action: 'remove_domain', serviceId: SERVICE_ID, domain_id: domainId })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                const row = document.getElementById('domrow-' + domainId);
+                if (row) row.remove();
+                showToast('Domain removed.', 'bg-secondary');
+            } else {
+                alert('Failed: ' + (data.error || 'Unknown error'));
+            }
+        })
+        .catch(() => alert('Request failed.'));
     }
 
     // Modern SaaS Overhaul: Remove WHMCS Default Clutter more safely
