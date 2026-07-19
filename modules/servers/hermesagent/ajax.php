@@ -40,25 +40,39 @@ $serverParams = [
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 if ($action === 'save_onboarding') {
-    $onb = Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceId)->first();
-    if (!$onb) { echo json_encode(['success' => false, 'error' => 'Onboarding record not found.']); exit; }
-    if ($onb->status !== 'pending') { echo json_encode(['success' => false, 'error' => 'Already onboarded.']); exit; }
-    
-    $updateData = [
-        'status' => 'completed',
-        'completed_at' => date('Y-m-d H:i:s'),
-    ];
-    if (!empty($_POST['agent_name'])) $updateData['agent_name'] = trim($_POST['agent_name']);
-    if (!empty($_POST['use_case'])) $updateData['use_case'] = trim($_POST['use_case']);
-    if (!empty($_POST['tone'])) $updateData['tone'] = trim($_POST['tone']);
-    if (!empty($_POST['custom_instructions'])) $updateData['custom_instructions'] = trim($_POST['custom_instructions']);
-    
-    if (!empty($_POST['skip'])) $updateData['status'] = 'skipped';
-    
-    Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceId)->update($updateData);
-    
-    $results = localAPI('ModuleCreate', ['accountid' => $serviceId]);
-    echo json_encode(['success' => true, 'api_result' => $results]);
+    try {
+        $onb = Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceId)->first();
+        if (!$onb) { echo json_encode(['success' => false, 'error' => 'Onboarding record not found.']); exit; }
+        if ($onb->status !== 'pending') { echo json_encode(['success' => false, 'error' => 'Already onboarded.']); exit; }
+        
+        $updateData = [
+            'status' => 'completed',
+            'completed_at' => date('Y-m-d H:i:s'),
+        ];
+        if (!empty($_POST['agent_name'])) $updateData['agent_name'] = trim($_POST['agent_name']);
+        if (!empty($_POST['use_case'])) $updateData['use_case'] = trim($_POST['use_case']);
+        if (!empty($_POST['tone'])) $updateData['tone'] = trim($_POST['tone']);
+        if (!empty($_POST['custom_instructions'])) $updateData['custom_instructions'] = trim($_POST['custom_instructions']);
+        
+        if (!empty($_POST['skip'])) $updateData['status'] = 'skipped';
+        
+        Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceId)->update($updateData);
+        
+        // Pass the first admin username to localAPI
+        $admin = Capsule::table('tbladmins')->where('disabled', 0)->first();
+        $adminUser = $admin ? $admin->username : 'admin';
+        
+        $results = localAPI('ModuleCreate', ['accountid' => $serviceId], $adminUser);
+        
+        if ($results['result'] === 'error') {
+            echo json_encode(['success' => false, 'error' => 'ModuleCreate API Error: ' . $results['message']]);
+            exit;
+        }
+        
+        echo json_encode(['success' => true, 'api_result' => $results]);
+    } catch (\Throwable $e) {
+        echo json_encode(['success' => false, 'error' => 'Server Exception: ' . $e->getMessage()]);
+    }
     exit;
 }
 

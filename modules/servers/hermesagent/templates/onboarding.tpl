@@ -361,7 +361,16 @@
             method: 'POST',
             body: data
         })
-        .then(res => res.json())
+        .then(async res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const text = await res.text();
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error("Raw response:", text);
+                throw new Error("Invalid server response: " + text.substring(0, 50));
+            }
+        })
         .then(res => {
             if (res.success) {
                 // start polling
@@ -373,8 +382,8 @@
             }
         })
         .catch(err => {
-            alert('Network error occurred.');
-            location.reload();
+            alert('Network error: ' + err.message);
+            console.error(err);
         });
     }
     
