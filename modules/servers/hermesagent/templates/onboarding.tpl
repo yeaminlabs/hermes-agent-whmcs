@@ -404,4 +404,23 @@
     // Auto-poll if we load the page and it's already completed (provisioning in background)
     pollProvisionStatus();
     {/if}
+    
+    // Hide default WHMCS product panels while onboarding is active
+    document.addEventListener("DOMContentLoaded", function() {
+        setTimeout(function() {
+            const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6, .card-header, .panel-heading, .title');
+            headings.forEach(function(h) {
+                const text = h.textContent.trim();
+                if (text === 'Service Overview' || text.includes('Control Panel Access') || text === 'Additional Information' || text === 'Billing Cycle') {
+                    const container = h.closest('.card, .panel, .lagom-panel, .section, .row');
+                    if (container) container.style.display = 'none';
+                }
+            });
+            // Also hide any stray cPanel login buttons or sections
+            document.querySelectorAll('a[href*="dologin.php"]').forEach(function(el) {
+                const container = el.closest('.card, .panel, .row');
+                if (container) container.style.display = 'none';
+            });
+        }, 50); // slight delay to ensure DOM is fully parsed
+    });
 </script>
