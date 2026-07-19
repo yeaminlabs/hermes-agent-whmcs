@@ -87,34 +87,34 @@ Route traffic through AWS Bedrock (Claude, Llama, Mistral) or any OpenAI-compati
 
 ```mermaid
 flowchart TD
-    subgraph WHMCS ["🖥️ WHMCS (snbdhost.com)"]
-        A[Client Orders Product] --> B[hermesagent_CreateAccount]
-        B --> C[SSH via phpseclib]
-        B --> D[LiteLLM /key/generate\nhermes-{id}]
+    subgraph WHMCS ["WHMCS — snbdhost.com"]
+        A["Client Orders Product"] --> B["hermesagent_CreateAccount"]
+        B --> C["SSH via phpseclib"]
+        B --> D["LiteLLM — POST /key/generate<br/>alias: hermes-SERVICE_ID"]
     end
 
-    subgraph VPS ["🖧 Hermes VPS (46.62.205.66)"]
-        C --> E[docker run hermes-{id}]
-        E --> F[hermes-net-{id} bridge]
-        F --> G[Container: port 38xx / 39xx]
-        G --> H[/srv/hermes/{id}/data/config.yaml]
+    subgraph VPS ["Hermes VPS — 46.62.205.66"]
+        C --> E["docker run hermes-SERVICE_ID"]
+        E --> F["hermes-net-SERVICE_ID bridge"]
+        F --> G["Container — port 38xx / 39xx"]
+        G --> H["/srv/hermes/SERVICE_ID/config.yaml"]
     end
 
-    subgraph Caddy ["🔒 Caddy Reverse Proxy"]
-        I["{id}.hermes.deltadns.xyz"] --> G
-        I --> J[Auto TLS via ACME]
+    subgraph Caddy ["Caddy Reverse Proxy"]
+        I["SERVICE_ID.hermes.deltadns.xyz"] --> G
+        I --> J["Auto TLS via ACME"]
     end
 
-    subgraph LiteLLM ["🧠 LiteLLM Proxy (ai-proxy.snbdhost.com)"]
-        D --> K[Virtual Key: sk-hermes-{id}]
-        K --> L[AWS Bedrock]
-        K --> M[OpenAI / Custom]
-        L --> N[Claude / Llama / Mistral]
+    subgraph LiteLLM ["LiteLLM Proxy — ai-proxy.snbdhost.com"]
+        D --> K["Virtual Key: sk-hermes-SERVICE_ID"]
+        K --> L["AWS Bedrock"]
+        K --> M["OpenAI / Custom Endpoint"]
+        L --> N["Claude / Llama / Mistral"]
     end
 
-    G -->|OPENAI_API_BASE| K
-    D2[Brain Management\nPush to All] -->|SSH + docker restart| G
-    D2 -->|PATCH config.yaml| H
+    G -->|"OPENAI_API_BASE"| K
+    D2["Brain Management — Push to All"] -->|"SSH + docker restart"| G
+    D2 -->|"PATCH config.yaml"| H
 
     style WHMCS fill:#1e293b,color:#e2e8f0,stroke:#475569
     style VPS fill:#0f172a,color:#e2e8f0,stroke:#334155
