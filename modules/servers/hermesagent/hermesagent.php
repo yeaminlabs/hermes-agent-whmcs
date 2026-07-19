@@ -249,7 +249,7 @@ function hermesagent_litellm_config($params) {
  * Create a LiteLLM virtual API key for a customer.
  * Returns ['key_id' => ..., 'key_value' => ...] or throws.
  */
-function hermesagent_litellm_create_key($gatewayUrl, $masterKey, $serviceId, $model, $maxBudget = 5.0) {
+function hermesagent_litellm_create_key($gatewayUrl, $masterKey, $serviceId, $model, $maxBudget = 1.0) {
     $payload = json_encode([
         'key_alias'     => 'hermes-' . $serviceId,
         'user_id'       => 'hermes-' . $serviceId,
@@ -1968,43 +1968,13 @@ function hermesagent_ClientArea($params) {
                 }
             }
             
-            // 2. Fetch Token Usage (Querying internal SQLite directly for Mistral/Voxtral)
-            $pyScript = "import sqlite3, glob\n"
-                      . "p=0; c=0\n"
-                      . "for db in glob.glob('/opt/data/*.db') + glob.glob('/opt/data/*.sqlite*'):\n"
-                      . "    try:\n"
-                      . "        conn = sqlite3.connect(db); cur = conn.cursor()\n"
-                      . "        cur.execute(\"SELECT name FROM sqlite_master WHERE type='table'\")\n"
-                      . "        for (t,) in cur.fetchall():\n"
-                      . "            try:\n"
-                      . "                cur.execute('SELECT * FROM ' + t + ' LIMIT 1')\n"
-                      . "                cols = [desc[0].lower() for desc in cur.description]\n"
-                      . "                if 'prompt_tokens' in cols and 'completion_tokens' in cols and 'model' in cols:\n"
-                      . "                    cur.execute('SELECT prompt_tokens, completion_tokens, model FROM ' + t)\n"
-                      . "                    for row in cur.fetchall():\n"
-                      . "                        m_name = str(row[2]).lower()\n"
-                      . "                        if 'mistral' in m_name or 'voxtral' in m_name:\n"
-                      . "                            p += int(row[0] or 0); c += int(row[1] or 0)\n"
-                      . "                elif 'input_tokens' in cols and 'output_tokens' in cols and 'model' in cols:\n"
-                      . "                    cur.execute('SELECT input_tokens, output_tokens, model FROM ' + t)\n"
-                      . "                    for row in cur.fetchall():\n"
-                      . "                        m_name = str(row[2]).lower()\n"
-                      . "                        if 'mistral' in m_name or 'voxtral' in m_name:\n"
-                      . "                            p += int(row[0] or 0); c += int(row[1] or 0)\n"
-                      . "            except: pass\n"
-                      . "    except: pass\n"
-                      . "print('PROMPT_TOKENS:' + str(p) + ' COMPLETION_TOKENS:' + str(c))";
-            
-            $b64Script = base64_encode($pyScript);
-            $logCmd = "docker exec \"hermes-{$serviceid}\" python3 -c \"import base64; exec(base64.b64decode('{$b64Script}').decode('utf-8'))\" 2>/dev/null";
-            $logOutput = $ssh->exec($logCmd);
-            
-            if (!empty($logOutput)) {
-                if (preg_match('/PROMPT_TOKENS:(\d+)/', $logOutput, $m)) {
-                    $promptTokens = intval($m[1]);
-                }
-                if (preg_match('/COMPLETION_TOKENS:(\d+)/', $logOutput, $m)) {
-                    $completionTokens = intval($m[1]);
+            // 2. Fetch Token Usage from LiteLLM (authoritative — tracks every token at proxy level)
+            if (!empty($record->litellm_key_value)) {
+                $ltCfg = hermesagent_litellm_config($params);
+                $usage = hermesagent_litellm_get_usage($ltCfg['url'], $ltCfg['key'], $record->litellm_key_value);
+                if ($usage) {
+                    $promptTokens     = $usage['prompt_tokens'];
+                    $completionTokens = $usage['completion_tokens'];
                 }
             }
         } catch (\Exception $e) {
@@ -2020,6 +1990,16 @@ function hermesagent_ClientArea($params) {
     $totalUsed = intval($promptTokens) + intval($completionTokens);
     $tokenLimit = 10000000;
     $percentUsed = min(100, ($totalUsed / $tokenLimit) * 100);
+
+    // Enforce quota: block the LiteLLM key the moment 10M tokens is reached
+    if ($totalUsed >= $tokenLimit && !empty($record->litellm_key_id)) {
+        try {
+            $ltCfg = hermesagent_litellm_config($params);
+            hermesagent_litellm_update_key($ltCfg['url'], $ltCfg['key'], $record->litellm_key_id, false);
+            logModuleCall('hermesagent', 'QuotaEnforcement', $serviceid,
+                "Key blocked — {$totalUsed} tokens used (limit: {$tokenLimit})");
+        } catch (\Exception $e) { /* non-fatal */ }
+    }
 
     // Domain management
     $serverIp    = '46.62.205.66';
