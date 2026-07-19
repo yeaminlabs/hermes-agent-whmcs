@@ -69,6 +69,20 @@ function hermesagent_activate() {
             );
         }
 
+        // Onboarding tracking table
+        if (!Capsule::schema()->hasTable('mod_hermesagent_onboarding')) {
+            Capsule::schema()->create('mod_hermesagent_onboarding', function ($table) {
+                $table->integer('serviceid')->unique();
+                $table->string('agent_name', 60)->nullable();
+                $table->string('use_case', 30)->nullable();
+                $table->string('tone', 30)->nullable();
+                $table->text('custom_instructions')->nullable();
+                $table->string('status', 20)->default('pending');
+                $table->timestamp('created_at')->nullable();
+                $table->timestamp('completed_at')->nullable();
+            });
+        }
+
         // Brain config table — stores admin-defined AI endpoint presets
         if (!Capsule::schema()->hasTable('mod_hermesagent_brain_config')) {
             Capsule::schema()->create('mod_hermesagent_brain_config', function ($table) {
@@ -407,6 +421,32 @@ function hermesagent_output($vars) {
 
     // 0a. Handle brain POST actions
     $brainMessage = '';
+    
+    // Handle provision with defaults
+    if (isset($_POST['provision_default'])) {
+        $svcId = intval($_POST['provision_service_id']);
+        if ($svcId > 0) {
+            try {
+                Capsule::table('mod_hermesagent_onboarding')
+                    ->where('serviceid', $svcId)
+                    ->update(['status' => 'skipped', 'completed_at' => date('Y-m-d H:i:s')]);
+                
+                $command = 'ModuleCreate';
+                $postData = array(
+                    'accountid' => $svcId,
+                );
+                $results = localAPI($command, $postData);
+                
+                if ($results['result'] === 'success') {
+                    $message = '<div class="alert alert-success" style="padding:15px; border-radius:8px; margin-bottom:20px; font-weight:600;"><i class="fas fa-check-circle"></i> Service #' . $svcId . ' has been provisioned with default settings.</div>';
+                } else {
+                    $message = '<div class="alert alert-danger" style="padding:15px; border-radius:8px; margin-bottom:20px; font-weight:600;"><i class="fas fa-exclamation-triangle"></i> Failed to provision service #' . $svcId . ': ' . ($results['message'] ?? 'Unknown error') . '</div>';
+                }
+            } catch (\Exception $e) {
+                $message = '<div class="alert alert-danger" style="padding:15px; border-radius:8px; margin-bottom:20px; font-weight:600;"><i class="fas fa-exclamation-triangle"></i> Failed to provision service #' . $svcId . ': ' . $e->getMessage() . '</div>';
+            }
+        }
+    }
     if (isset($_POST['add_brain'])) {
         $bName     = htmlspecialchars(trim($_POST['brain_display_name'] ?? ''), ENT_QUOTES, 'UTF-8');
         $bType     = in_array($_POST['brain_provider_type'] ?? '', ['proxy','bedrock','openai','custom'])
@@ -662,6 +702,24 @@ function hermesagent_output($vars) {
             'tblservers.secure as server_secure'
         )
         ->get();
+
+    // 3a. Fetch pending onboarding
+    $pendingOnboarding = [];
+    try {
+        $pendingOnboarding = Capsule::table('mod_hermesagent_onboarding')
+            ->join('tblhosting', 'mod_hermesagent_onboarding.serviceid', '=', 'tblhosting.id')
+            ->join('tblclients', 'tblhosting.userid', '=', 'tblclients.id')
+            ->join('tblproducts', 'tblhosting.packageid', '=', 'tblproducts.id')
+            ->where('mod_hermesagent_onboarding.status', 'pending')
+            ->select(
+                'mod_hermesagent_onboarding.*',
+                'tblclients.firstname',
+                'tblclients.lastname',
+                'tblclients.companyname',
+                'tblproducts.name as product_name'
+            )
+            ->get();
+    } catch (\Exception $e) { /* table might not exist yet */ }
 
     // 3b. Fetch quiz leads
     $leads = [];
@@ -1128,6 +1186,61 @@ function hermesagent_output($vars) {
                 </div>
             </div>
         </div>
+        
+        <!-- Awaiting Onboarding Section -->
+        <div class="ha-panel">
+            <div class="ha-panel-header" style="background:#fff3cd; border-color:#ffeeba;">
+                <h4 class="ha-panel-title" style="color:#856404;"><i class="fas fa-hourglass-half"></i> Awaiting Customer Onboarding</h4>
+                <span class="ha-badge" style="background:#856404;color:#fff;padding:5px 10px;"><?php echo count($pendingOnboarding); ?> Pending</span>
+            </div>
+            <div class="ha-panel-body" style="padding:0; overflow-x:auto;">
+                <?php if (count($pendingOnboarding) > 0): ?>
+                    <table class="table-ha">
+                        <thead>
+                            <tr>
+                                <th>Service ID</th>
+                                <th>Client</th>
+                                <th>Product</th>
+                                <th>Order Date</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($pendingOnboarding as $po): ?>
+                                <?php
+                                $clientName = htmlspecialchars($po->firstname . ' ' . $po->lastname);
+                                if ($po->companyname) {
+                                    $clientName .= ' (' . htmlspecialchars($po->companyname) . ')';
+                                }
+                                ?>
+                                <tr>
+                                    <td><strong>#<?php echo $po->serviceid; ?></strong></td>
+                                    <td><?php echo $clientName; ?></td>
+                                    <td><?php echo htmlspecialchars($po->product_name); ?></td>
+                                    <td><?php echo htmlspecialchars($po->created_at); ?></td>
+                                    <td><span class="ha-badge badge-suspended">Pending Wizard</span></td>
+                                    <td>
+                                        <form method="post" onsubmit="return confirm('Force provision this service using default generic settings?');">
+                                            <input type="hidden" name="provision_service_id" value="<?php echo $po->serviceid; ?>">
+                                            <button type="submit" name="provision_default" class="btn-ha-primary" style="padding:5px 10px;font-size:12px;">
+                                                <i class="fas fa-rocket"></i> Provision with defaults
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                <?php else: ?>
+                    <div style="text-align:center; padding: 30px 20px; color:#777;">
+                        <i class="fas fa-check-circle" style="font-size:30px; margin-bottom:10px; color:#1cc88a; display:block;"></i>
+                        <p style="margin:0; font-size:14px;">No services waiting for onboarding.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
         <!-- Quiz Leads Section -->
         <?php echo $leadMessage; ?>
         <div class="ha-panel" style="margin-top:0;">

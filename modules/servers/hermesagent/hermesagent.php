@@ -118,6 +118,19 @@ function hermesagent_ConfigOptions() {
  */
 function hermesagent_setup_database() {
     try {
+        if (!Capsule::schema()->hasTable('mod_hermesagent_onboarding')) {
+            Capsule::schema()->create('mod_hermesagent_onboarding', function ($table) {
+                $table->integer('serviceid')->unique();
+                $table->string('agent_name', 60)->nullable();
+                $table->string('use_case', 30)->nullable();
+                $table->string('tone', 30)->nullable();
+                $table->text('custom_instructions')->nullable();
+                $table->string('status', 20)->default('pending');
+                $table->timestamp('created_at')->nullable();
+                $table->timestamp('completed_at')->nullable();
+            });
+        }
+        
         if (!Capsule::schema()->hasTable('mod_hermesagent_instances')) {
             Capsule::schema()->create(
                 'mod_hermesagent_instances',
@@ -530,6 +543,20 @@ function hermesagent_CreateAccount($params) {
     
     $serviceid = intval($params['serviceid']);
     
+    // -- Onboarding Gate --
+    $onb = Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceid)->first();
+    if (!$onb) {
+        Capsule::table('mod_hermesagent_onboarding')->insert([
+            'serviceid' => $serviceid, 'status' => 'pending', 'created_at' => date('Y-m-d H:i:s')
+        ]);
+        logModuleCall('hermesagent', 'CreateAccount_Deferred', $serviceid, 'Provisioning deferred — awaiting customer onboarding');
+        return 'success'; // WHMCS marks service Active; container not yet created
+    }
+    if ($onb->status === 'pending') {
+        return 'success'; // still waiting; idempotent re-entry guard
+    }
+    // -- End Gate --
+
     // Resolve values with customer custom inputs and configurable option overrides
     $llmProvider = 'free-tier'; // SNBD API is the only provider — always use proxy
     $providerApiKey = '';
@@ -727,7 +754,37 @@ function hermesagent_CreateAccount($params) {
         // A persistent HTTP server is pre-started on port 3000 serving /opt/data/.
         // Caddy on the host routes /artifacts/* on the dashboard domain to that server.
         $artifactsUrl = "https://{$serviceid}.{$hostname}/artifacts";
-        $systemPrompt = "# YOUR ENVIRONMENT\n"
+        
+        // Build Persona Preamble based on Onboarding
+        $personaPreamble = "";
+        $agentName = "Hermes"; // default
+        if (isset($onb) && $onb && $onb->status === 'completed') {
+            $agentName = $onb->agent_name ?: "Hermes";
+            $personaPreamble .= "Your name is {$agentName}.\n\n";
+            
+            if ($onb->use_case === 'coding') {
+                $personaPreamble .= "You are an expert coding assistant. Your goal is to write clean, maintainable, and bug-free code. Focus on best practices, performance, and architecture.\n";
+            } elseif ($onb->use_case === 'support') {
+                $personaPreamble .= "You are a dedicated customer support agent. Your goal is to help users resolve issues patiently, clearly, and effectively.\n";
+            } elseif ($onb->use_case === 'content') {
+                $personaPreamble .= "You are a creative content creator. Your goal is to produce engaging, high-quality content tailored to the audience.\n";
+            } elseif ($onb->use_case === 'automation') {
+                $personaPreamble .= "You are an automation and Ops specialist. Focus on streamlining workflows, writing scripts, and managing infrastructure efficiently.\n";
+            } else {
+                $personaPreamble .= "You are a versatile, general-purpose AI assistant. Your goal is to be universally helpful across a variety of tasks.\n";
+            }
+            
+            if ($onb->tone) {
+                $personaPreamble .= "Your tone should be {$onb->tone}.\n";
+            }
+            
+            if (!empty($onb->custom_instructions)) {
+                $personaPreamble .= "\nOwner's instructions:\n" . $onb->custom_instructions . "\n";
+            }
+            $personaPreamble .= "\n---\n\n";
+        }
+
+        $systemPrompt = $personaPreamble . "# YOUR ENVIRONMENT\n"
             . "You are Hermes, an AI agent running on a REAL dedicated server — not a sandbox. "
             . "You have your own isolated space with persistent storage and a live public URL.\n\n"
             . "# HOSTING FILES PUBLICLY\n"
@@ -1115,7 +1172,7 @@ HTML;
         $setupCmds .= "print('config patched')\n";
         $setupCmds .= "PYEOF\n";
 
-        $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"sed -i 's/<title>Hermes Agent - Dashboard<\\/title>/<title>{$dashboardUsername} Hermes Agent<\\/title>/g' /opt/hermes/hermes_cli/web_dist/index.html\"\n";
+        $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"sed -i 's/<title>Hermes Agent - Dashboard<\\/title>/<title>{$agentName} — Powered by SNBD Host<\\/title>/g' /opt/hermes/hermes_cli/web_dist/index.html\"\n";
         
         // Write branding to host first to avoid escaping issues, then pipe to container
         $setupCmds .= "cat << 'BRANDING_EOF' > \"{$dataDir}/branding.html\"\n{$brandingHtml}\nBRANDING_EOF\n";
@@ -1826,6 +1883,22 @@ function hermesagent_ClientArea($params) {
     
     $record = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceid)->first();
     if (!$record) {
+        $onboarding = Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceid)->first();
+        if ($onboarding && in_array($onboarding->status, ['pending', 'completed'])) {
+            // Load onboarding UI
+            return [
+                'templatefile' => 'templates/onboarding',
+                'vars' => [
+                    'serviceid' => $serviceid,
+                    'status' => $onboarding->status,
+                    'agent_name' => $onboarding->agent_name,
+                    'use_case' => $onboarding->use_case,
+                    'tone' => $onboarding->tone,
+                    'custom_instructions' => $onboarding->custom_instructions
+                ]
+            ];
+        }
+
         return [
             'templatefile' => 'templates/clientarea',
             'vars' => [

@@ -37,7 +37,38 @@ $serverParams = [
     'serveraccesshash' => $server->accesshash,
 ];
 
-// ─── Instance record ─────────────────────────────────────────────────────────
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+if ($action === 'save_onboarding') {
+    $onb = Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceId)->first();
+    if (!$onb) { echo json_encode(['success' => false, 'error' => 'Onboarding record not found.']); exit; }
+    if ($onb->status !== 'pending') { echo json_encode(['success' => false, 'error' => 'Already onboarded.']); exit; }
+    
+    $updateData = [
+        'status' => 'completed',
+        'completed_at' => date('Y-m-d H:i:s'),
+    ];
+    if (!empty($_POST['agent_name'])) $updateData['agent_name'] = trim($_POST['agent_name']);
+    if (!empty($_POST['use_case'])) $updateData['use_case'] = trim($_POST['use_case']);
+    if (!empty($_POST['tone'])) $updateData['tone'] = trim($_POST['tone']);
+    if (!empty($_POST['custom_instructions'])) $updateData['custom_instructions'] = trim($_POST['custom_instructions']);
+    
+    if (!empty($_POST['skip'])) $updateData['status'] = 'skipped';
+    
+    Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceId)->update($updateData);
+    
+    $results = localAPI('ModuleCreate', ['accountid' => $serviceId]);
+    echo json_encode(['success' => true, 'api_result' => $results]);
+    exit;
+}
+
+if ($action === 'provision_status') {
+    $instance = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceId)->first();
+    echo json_encode(['success' => true, 'provisioned' => ($instance && $instance->status === 'Active')]);
+    exit;
+}
+
+// ─── Instance record (required for domain actions) ───────────────────────────
 
 $instance = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceId)->first();
 if (!$instance) { echo json_encode(['success' => false, 'error' => 'Instance not found']); exit; }
@@ -49,10 +80,6 @@ $serverIp = '46.62.205.66';
 // ─── Load module functions ────────────────────────────────────────────────────
 
 require_once __DIR__ . '/hermesagent.php';
-
-// ─── Actions ─────────────────────────────────────────────────────────────────
-
-$action = $_POST['action'] ?? '';
 
 if ($action === 'add_domain') {
     $domain = strtolower(trim($_POST['domain'] ?? ''));
