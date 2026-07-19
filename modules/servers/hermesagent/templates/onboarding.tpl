@@ -206,7 +206,7 @@
 <div class="onb-wrapper">
     <div class="onb-card">
         
-        <?php if ($status === 'pending'): ?>
+        {if $status eq 'pending'}
         
         <!-- Wizard Form -->
         <div id="onb-wizard">
@@ -300,10 +300,10 @@
             </div>
         </div>
         
-        <?php endif; ?>
+        {/if}
 
         <!-- Launching Screen (Hidden by default, shown when submitting or if status is completed but not yet Active) -->
-        <div id="onb-launching" style="<?php echo ($status === 'completed' || $status === 'skipped') ? 'display:block;' : 'display:none;'; ?>">
+        <div id="onb-launching" style="{if $status eq 'completed' or $status eq 'skipped'}display:block;{else}display:none;{/if}">
             <div class="onb-header">
                 <h2 class="onb-title">Launching your Agent</h2>
                 <p class="onb-subtitle">We are spinning up your isolated container environment.</p>
@@ -320,7 +320,7 @@
 </div>
 
 <script>
-    const serviceId = <?php echo (int)$serviceid; ?>;
+    const serviceId = {$serviceid};
     
     function setInputValue(id, val) {
         document.getElementById(id).value = val;
@@ -400,8 +400,8 @@
         }, 3000);
     }
     
-    <?php if ($status === 'completed' || $status === 'skipped'): ?>
+    {if $status eq 'completed' or $status eq 'skipped'}
     // Auto-poll if we load the page and it's already completed (provisioning in background)
     pollProvisionStatus();
-    <?php endif; ?>
+    {/if}
 </script>

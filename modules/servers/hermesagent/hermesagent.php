@@ -1893,25 +1893,28 @@ function hermesagent_ClientArea($params) {
             $onboarding = Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceid)->first();
         }
 
-        if ($onboarding && in_array($onboarding->status, ['pending', 'completed'])) {
-            // Load onboarding UI
-            return [
-                'templatefile' => 'templates/onboarding',
-                'vars' => [
-                    'serviceid' => $serviceid,
-                    'status' => $onboarding->status,
-                    'agent_name' => $onboarding->agent_name,
-                    'use_case' => $onboarding->use_case,
-                    'tone' => $onboarding->tone,
-                    'custom_instructions' => $onboarding->custom_instructions
-                ]
-            ];
+        if ($onboarding) {
+            $onbStatus = is_array($onboarding) ? $onboarding['status'] : $onboarding->status;
+            if (in_array($onbStatus, ['pending', 'completed'])) {
+                // Load onboarding UI
+                return [
+                    'templatefile' => 'templates/onboarding',
+                    'vars' => [
+                        'serviceid' => $serviceid,
+                        'status' => $onbStatus,
+                        'agent_name' => is_array($onboarding) ? $onboarding['agent_name'] : $onboarding->agent_name,
+                        'use_case' => is_array($onboarding) ? $onboarding['use_case'] : $onboarding->use_case,
+                        'tone' => is_array($onboarding) ? $onboarding['tone'] : $onboarding->tone,
+                        'custom_instructions' => is_array($onboarding) ? $onboarding['custom_instructions'] : $onboarding->custom_instructions
+                    ]
+                ];
+            }
         }
 
         return [
             'templatefile' => 'templates/clientarea',
             'vars' => [
-                'deployment_status' => 'Pending Provisioning',
+                'deployment_status' => 'Pending Provisioning (Onb Status: ' . ($onboarding ? $onboarding->status : 'NULL') . ')',
                 'dashboard_url' => '',
                 'api_url' => '',
                 'api_enabled' => false,
