@@ -588,6 +588,47 @@ function hermesagent_output($vars) {
         foreach ($brains as $b) { if ($b->is_active) { $activeBrain = $b; break; } }
     } catch (\Exception $e) { /* table not yet created */ }
 
+    // 2c. Fetch per-service token usage from LiteLLM (batched, with timeout)
+    $usageMap = [];
+    try {
+        $brain = hermesagent_get_active_brain();
+        $litellmApiUrl = rtrim(preg_replace('|/v1/?$|', '', rtrim($brain['base_url'], '/')), '/');
+        $masterKey = $brain['api_key'] ?? 'sk-snbdhost-master-key-2026';
+        $keyed = Capsule::table('mod_hermesagent_instances')
+            ->whereNotNull('litellm_key_value')
+            ->where('litellm_key_value', '!=', '')
+            ->select('serviceid', 'litellm_key_value')
+            ->get();
+        foreach ($keyed as $row) {
+            $ch = curl_init($litellmApiUrl . '/key/info?key=' . urlencode($row->litellm_key_value));
+            curl_setopt_array($ch, [
+                CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $masterKey],
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT        => 5,
+                CURLOPT_CONNECTTIMEOUT => 2,
+                CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+            ]);
+            $resp = curl_exec($ch);
+            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            if ($code === 200 && $resp) {
+                $d = json_decode($resp, true);
+                if ($d && isset($d['info'])) {
+                    $info = $d['info'];
+                    $pt = (int)($info['prompt_tokens'] ?? 0);
+                    $ct = (int)($info['completion_tokens'] ?? 0);
+                    $tt = (int)($info['total_tokens'] ?? ($pt + $ct));
+                    $usageMap[$row->serviceid] = [
+                        'total_tokens'      => $tt ?: ($pt + $ct),
+                        'prompt_tokens'     => $pt,
+                        'completion_tokens' => $ct,
+                        'spend'             => (float)($info['spend'] ?? 0),
+                    ];
+                }
+            }
+        }
+    } catch (\Exception $e) { /* LiteLLM unreachable — skip */ }
+
     // 3. Fetch deployed instances
     $deployments = Capsule::table('mod_hermesagent_instances')
         ->join('tblhosting', 'mod_hermesagent_instances.serviceid', '=', 'tblhosting.id')
@@ -996,6 +1037,8 @@ function hermesagent_output($vars) {
                                     <th>VPS Server IP</th>
                                     <th>Dashboard URL</th>
                                     <th>Brain</th>
+                                    <th>Tokens Used</th>
+                                    <th>Spend</th>
                                     <th>Status</th>
                                 </tr>
                             </thead>
@@ -1035,6 +1078,26 @@ function hermesagent_output($vars) {
                                             <code style="font-size:11px;background:#e8f0fe;color:#2b5be8;padding:3px 7px;border-radius:4px;"><?php echo htmlspecialchars($d->current_model); ?></code>
                                             <?php else: ?>
                                             <span style="font-size:11px;color:#aaa;">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <?php
+                                        $usage = $usageMap[$d->serviceid] ?? null;
+                                        ?>
+                                        <td style="text-align:right;">
+                                            <?php if ($usage): ?>
+                                            <span style="font-size:12px;font-weight:600;color:#2e3d49;"><?php echo number_format($usage['total_tokens']); ?></span>
+                                            <?php if ($usage['prompt_tokens'] || $usage['completion_tokens']): ?>
+                                            <br><span style="font-size:10px;color:#888;">↑<?php echo number_format($usage['prompt_tokens']); ?> ↓<?php echo number_format($usage['completion_tokens']); ?></span>
+                                            <?php endif; ?>
+                                            <?php else: ?>
+                                            <span style="font-size:11px;color:#ccc;">—</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td style="text-align:right;">
+                                            <?php if ($usage && $usage['spend'] > 0): ?>
+                                            <span style="font-size:12px;font-weight:600;color:#1cc88a;">$<?php echo number_format($usage['spend'], 4); ?></span>
+                                            <?php else: ?>
+                                            <span style="font-size:11px;color:#ccc;">—</span>
                                             <?php endif; ?>
                                         </td>
                                         <td><span class="ha-badge <?php echo $statusClass; ?>"><?php echo $d->status; ?></span></td>

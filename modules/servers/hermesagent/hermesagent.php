@@ -341,7 +341,46 @@ function hermesagent_litellm_delete_key($gatewayUrl, $masterKey, $keyId) {
 }
 
 /**
- * Resolves configuration parameters with case-insensitive checks against customer-defined 
+ * Fetch token usage and spend for a LiteLLM virtual key.
+ * Returns ['total_tokens' => int, 'spend' => float, 'model' => string] or null on failure.
+ */
+function hermesagent_litellm_get_usage($gatewayUrl, $masterKey, $keyValue) {
+    $ch = curl_init($gatewayUrl . '/key/info?key=' . urlencode($keyValue));
+    curl_setopt_array($ch, [
+        CURLOPT_HTTPHEADER     => [
+            'Authorization: Bearer ' . $masterKey,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 8,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if ($httpCode !== 200 || empty($response)) return null;
+
+    $data = json_decode($response, true);
+    if (!$data || !isset($data['info'])) return null;
+
+    $info = $data['info'];
+    $totalTokens = ($info['total_tokens'] ?? 0) + 0;
+    $promptTokens = $info['prompt_tokens'] ?? 0;
+    $completionTokens = $info['completion_tokens'] ?? 0;
+    if ($totalTokens === 0) $totalTokens = $promptTokens + $completionTokens;
+
+    return [
+        'total_tokens'      => (int) $totalTokens,
+        'prompt_tokens'     => (int) $promptTokens,
+        'completion_tokens' => (int) $completionTokens,
+        'spend'             => (float) ($info['spend'] ?? 0),
+        'model'             => $info['models'][0] ?? '',
+    ];
+}
+
+/**
+ * Resolves configuration parameters with case-insensitive checks against customer-defined
  * Configurable Options and Custom Fields in WHMCS. Falls back to admin default settings.
  */
 function hermesagent_resolve_param($params, $configKey, $name, $defaultVal = '') {
@@ -1057,11 +1096,12 @@ HTML;
         $setupCmds .= "    cfg = {}\n";
         $setupCmds .= "cfg['system_prompt'] = {'replace': '{$escapedSystemPrompt}'}\n";
         $escapedBrainUrl   = addslashes($brainBaseUrl);
-        $escapedBrainKey   = addslashes($brainApiKey);
+        // Use the per-container virtual key so LiteLLM tracks usage per service
+        $escapedTrackingKey = addslashes(!empty($litellmKey) ? $litellmKey : $brainApiKey);
         $escapedBrainModel = addslashes($brainModel);
         $setupCmds .= "if isinstance(cfg.get('model'), dict):\n";
         $setupCmds .= "    cfg['model']['base_url'] = '{$escapedBrainUrl}'\n";
-        $setupCmds .= "    cfg['model']['api_key']  = '{$escapedBrainKey}'\n";
+        $setupCmds .= "    cfg['model']['api_key']  = '{$escapedTrackingKey}'\n";
         $setupCmds .= "    cfg['model']['provider'] = 'custom'\n";
         $setupCmds .= "    cfg['model']['default']  = '{$escapedBrainModel}'\n";
         $setupCmds .= "cfg['terminal'] = {'backend': 'local', 'timeout': 180, 'cwd': '/opt/data'}\n";
