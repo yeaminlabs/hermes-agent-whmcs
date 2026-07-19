@@ -238,6 +238,7 @@ function hermesagent_litellm_config($params) {
  */
 function hermesagent_litellm_create_key($gatewayUrl, $masterKey, $serviceId, $model, $maxBudget = 5.0) {
     $payload = json_encode([
+        'key_alias'     => 'hermes-' . $serviceId,
         'models'        => [$model],
         'max_budget'    => $maxBudget,
         'metadata'      => [
@@ -276,12 +277,15 @@ function hermesagent_litellm_create_key($gatewayUrl, $masterKey, $serviceId, $mo
     }
 
     $data = json_decode($response, true);
-    if (!$data || empty($data['key']) || empty($data['key_id'])) {
+    if (!$data || empty($data['key'])) {
         throw new \Exception("LiteLLM /key/generate returned unexpected response: " . substr($response, 0, 500));
     }
 
+    // LiteLLM v1.93+ returns 'token' or 'token_id' instead of 'key_id'
+    $keyId = $data['key_id'] ?? $data['token_id'] ?? $data['token'] ?? '';
+
     return [
-        'key_id'    => $data['key_id'],
+        'key_id'    => $keyId,
         'key_value' => $data['key'],
     ];
 }
