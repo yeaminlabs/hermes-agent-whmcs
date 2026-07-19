@@ -5,7 +5,7 @@
  */
 
 define('WHMCS', true);
-$whmcsRoot = dirname(dirname(dirname(dirname(__DIR__))));
+$whmcsRoot = dirname(dirname(dirname(__DIR__)));
 require $whmcsRoot . '/init.php';
 
 use Illuminate\Database\Capsule\Manager as Capsule;
