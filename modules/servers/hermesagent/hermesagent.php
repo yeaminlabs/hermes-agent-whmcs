@@ -1884,6 +1884,15 @@ function hermesagent_ClientArea($params) {
     $record = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceid)->first();
     if (!$record) {
         $onboarding = Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceid)->first();
+        
+        // If no onboarding record exists yet (e.g. CreateAccount wasn't triggered by WHMCS auto-setup), create it now.
+        if (!$onboarding) {
+            Capsule::table('mod_hermesagent_onboarding')->insert([
+                'serviceid' => $serviceid, 'status' => 'pending', 'created_at' => date('Y-m-d H:i:s')
+            ]);
+            $onboarding = Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceid)->first();
+        }
+
         if ($onboarding && in_array($onboarding->status, ['pending', 'completed'])) {
             // Load onboarding UI
             return [
