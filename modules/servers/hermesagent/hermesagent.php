@@ -239,6 +239,7 @@ function hermesagent_litellm_config($params) {
 function hermesagent_litellm_create_key($gatewayUrl, $masterKey, $serviceId, $model, $maxBudget = 5.0) {
     $payload = json_encode([
         'key_alias'     => 'hermes-' . $serviceId,
+        'user_id'       => 'hermes-' . $serviceId,
         'models'        => [$model],
         'max_budget'    => $maxBudget,
         'metadata'      => [
@@ -246,9 +247,9 @@ function hermesagent_litellm_create_key($gatewayUrl, $masterKey, $serviceId, $mo
             'created_by' => 'whmcs-hermesagent',
         ],
         'max_parallel_requests' => 10,
-        'tpm_limit'     => 100000,   // tokens per minute
-        'rpm_limit'     => 60,       // requests per minute
-        'duration'      => null,     // never expire (managed by lifecycle)
+        'tpm_limit'     => 100000,
+        'rpm_limit'     => 60,
+        'duration'      => null,
     ]);
 
     $ch = curl_init($gatewayUrl . '/key/generate');

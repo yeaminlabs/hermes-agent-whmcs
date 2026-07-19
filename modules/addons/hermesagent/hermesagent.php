@@ -588,7 +588,7 @@ function hermesagent_output($vars) {
         foreach ($brains as $b) { if ($b->is_active) { $activeBrain = $b; break; } }
     } catch (\Exception $e) { /* table not yet created */ }
 
-    // 2c. Fetch per-service token usage from LiteLLM (batched, with timeout)
+    // 2c. Fetch per-service token usage from LiteLLM (parallel curl_multi)
     $usageMap = [];
     try {
         $brain = hermesagent_get_active_brain();
@@ -599,33 +599,47 @@ function hermesagent_output($vars) {
             ->where('litellm_key_value', '!=', '')
             ->select('serviceid', 'litellm_key_value')
             ->get();
-        foreach ($keyed as $row) {
-            $ch = curl_init($litellmApiUrl . '/key/info?key=' . urlencode($row->litellm_key_value));
-            curl_setopt_array($ch, [
-                CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $masterKey],
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_TIMEOUT        => 5,
-                CURLOPT_CONNECTTIMEOUT => 2,
-                CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
-            ]);
-            $resp = curl_exec($ch);
-            $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            curl_close($ch);
-            if ($code === 200 && $resp) {
-                $d = json_decode($resp, true);
-                if ($d && isset($d['info'])) {
-                    $info = $d['info'];
-                    $pt = (int)($info['prompt_tokens'] ?? 0);
-                    $ct = (int)($info['completion_tokens'] ?? 0);
-                    $tt = (int)($info['total_tokens'] ?? ($pt + $ct));
-                    $usageMap[$row->serviceid] = [
-                        'total_tokens'      => $tt ?: ($pt + $ct),
-                        'prompt_tokens'     => $pt,
-                        'completion_tokens' => $ct,
-                        'spend'             => (float)($info['spend'] ?? 0),
-                    ];
+        if ($keyed->count() > 0) {
+            $mh = curl_multi_init();
+            $handles = [];
+            foreach ($keyed as $row) {
+                $ch = curl_init($litellmApiUrl . '/key/info?key=' . urlencode($row->litellm_key_value));
+                curl_setopt_array($ch, [
+                    CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $masterKey],
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT        => 6,
+                    CURLOPT_CONNECTTIMEOUT => 3,
+                    CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+                ]);
+                curl_multi_add_handle($mh, $ch);
+                $handles[(int)$row->serviceid] = $ch;
+            }
+            do {
+                $status = curl_multi_exec($mh, $running);
+                if ($running) curl_multi_select($mh, 0.5);
+            } while ($running && $status === CURLM_OK);
+            foreach ($handles as $sid => $ch) {
+                $resp = curl_multi_getcontent($ch);
+                $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                curl_multi_remove_handle($mh, $ch);
+                curl_close($ch);
+                if ($code === 200 && $resp) {
+                    $d = json_decode($resp, true);
+                    if ($d && isset($d['info'])) {
+                        $info = $d['info'];
+                        $pt = (int)($info['prompt_tokens'] ?? 0);
+                        $ct = (int)($info['completion_tokens'] ?? 0);
+                        $tt = (int)($info['total_tokens'] ?? ($pt + $ct));
+                        $usageMap[$sid] = [
+                            'total_tokens'      => $tt ?: ($pt + $ct),
+                            'prompt_tokens'     => $pt,
+                            'completion_tokens' => $ct,
+                            'spend'             => (float)($info['spend'] ?? 0),
+                        ];
+                    }
                 }
             }
+            curl_multi_close($mh);
         }
     } catch (\Exception $e) { /* LiteLLM unreachable — skip */ }
 
