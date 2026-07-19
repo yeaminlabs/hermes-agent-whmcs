@@ -1,93 +1,324 @@
-# hermesAgent
+<div align="center">
 
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:0f0c29,50:302b63,100:24243e&height=220&text=HermesAgent&fontSize=72&fontAlignY=38&animation=twinkling&fontColor=ffffff&desc=AI%20Agent%20Hosting%20%E2%80%94%20Automated%20%C2%B7%20Isolated%20%C2%B7%20Per-Customer&descAlignY=62&descSize=18" width="100%"/>
 
+<br/>
 
-## Getting started
+[![PHP](https://img.shields.io/badge/PHP-8.1+-7A86B8?style=for-the-badge&logo=php&logoColor=white)](https://php.net)
+[![WHMCS](https://img.shields.io/badge/WHMCS-8.x-FF6B35?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZmlsbD0id2hpdGUiIGQ9Ik0xMiAyQzYuNDggMiAyIDYuNDggMiAxMnM0LjQ4IDEwIDEwIDEwIDEwLTQuNDggMTAtMTBTMTcuNTIgMiAxMiAyeiIvPjwvc3ZnPg==&logoColor=white)](https://whmcs.com)
+[![Docker](https://img.shields.io/badge/Docker-Containers-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
+[![LiteLLM](https://img.shields.io/badge/LiteLLM-v1.93+-8B5CF6?style=for-the-badge&logo=openai&logoColor=white)](https://litellm.ai)
+[![AWS Bedrock](https://img.shields.io/badge/AWS-Bedrock-FF9900?style=for-the-badge&logo=amazonaws&logoColor=white)](https://aws.amazon.com/bedrock/)
+[![Caddy](https://img.shields.io/badge/Caddy-Auto--SSL-1F8B4C?style=for-the-badge&logo=caddy&logoColor=white)](https://caddyserver.com)
+[![License](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](LICENSE)
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+<br/>
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+**HermesAgent** is a production-grade WHMCS server + addon module that spins up fully isolated AI agent containers on any VPS in seconds — complete with automatic SSL, per-customer token tracking, and a centralized Brain Management panel to push model changes to every live container at once.
 
-## Add your files
+<br/>
 
-* [Create](https://docs.gitlab.com/user/project/repository/web_editor/#create-a-file) or [upload](https://docs.gitlab.com/user/project/repository/web_editor/#upload-a-file) files
-* [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+</div>
+
+---
+
+## ⚡ What is HermesAgent?
+
+> Sell hosted AI agents as a product. Your customers get a private, branded agent dashboard at `{id}.hermes.yourdomain.xyz`. You control which LLM powers it — and can switch every agent in one click.
+
+Every provisioned service gets:
+- A **Docker container** with resource limits and full network isolation
+- An **automatic SSL domain** via Caddy ACME (`{id}.hermes.yourdomain.xyz`)
+- A **LiteLLM virtual key** (`hermes-{id}`) for individual token & spend tracking
+- A **WHMCS lifecycle** — create, suspend, unsuspend, terminate all wired up
+
+---
+
+## ✨ Feature Overview
+
+<table>
+<tr>
+<td width="50%">
+
+### 🧠 Brain Management
+Switch the AI model powering all containers from a single admin panel. Push the new model to every live container simultaneously — no SSH needed.
+
+</td>
+<td width="50%">
+
+### 🔐 Customer Isolation
+Each container runs in its own Docker network (`hermes-net-{id}`) with `--cap-drop ALL`, `--no-new-privileges`, and strict PID + memory limits.
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 📊 Token Tracking
+Per-container LiteLLM virtual keys appear in the Customer Usage dashboard. See total tokens, prompt/completion split, and USD spend per agent — live.
+
+</td>
+<td width="50%">
+
+### 🌐 Auto-SSL Domains
+Caddy provisions a TLS certificate for every new container automatically. Domains are live within seconds of provisioning.
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+### 🔄 Full WHMCS Lifecycle
+Create, suspend, unsuspend, and terminate all trigger the right Docker + LiteLLM actions. Suspending a container disables its API key too.
+
+</td>
+<td width="50%">
+
+### 🤖 Multi-Model Support
+Route traffic through AWS Bedrock (Claude, Llama, Mistral) or any OpenAI-compatible endpoint. Model per-container is tracked in the DB.
+
+</td>
+</tr>
+</table>
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart TD
+    subgraph WHMCS ["🖥️ WHMCS (snbdhost.com)"]
+        A[Client Orders Product] --> B[hermesagent_CreateAccount]
+        B --> C[SSH via phpseclib]
+        B --> D[LiteLLM /key/generate\nhermes-{id}]
+    end
+
+    subgraph VPS ["🖧 Hermes VPS (46.62.205.66)"]
+        C --> E[docker run hermes-{id}]
+        E --> F[hermes-net-{id} bridge]
+        F --> G[Container: port 38xx / 39xx]
+        G --> H[/srv/hermes/{id}/data/config.yaml]
+    end
+
+    subgraph Caddy ["🔒 Caddy Reverse Proxy"]
+        I["{id}.hermes.deltadns.xyz"] --> G
+        I --> J[Auto TLS via ACME]
+    end
+
+    subgraph LiteLLM ["🧠 LiteLLM Proxy (ai-proxy.snbdhost.com)"]
+        D --> K[Virtual Key: sk-hermes-{id}]
+        K --> L[AWS Bedrock]
+        K --> M[OpenAI / Custom]
+        L --> N[Claude / Llama / Mistral]
+    end
+
+    G -->|OPENAI_API_BASE| K
+    D2[Brain Management\nPush to All] -->|SSH + docker restart| G
+    D2 -->|PATCH config.yaml| H
+
+    style WHMCS fill:#1e293b,color:#e2e8f0,stroke:#475569
+    style VPS fill:#0f172a,color:#e2e8f0,stroke:#334155
+    style Caddy fill:#14532d,color:#dcfce7,stroke:#166534
+    style LiteLLM fill:#2e1065,color:#ede9fe,stroke:#4c1d95
+```
+
+---
+
+## 🧩 Stack
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| **Billing & Provisioning** | WHMCS 8.x | Order management, lifecycle hooks |
+| **Provisioning Transport** | phpseclib 3.x | SSH from WHMCS → VPS |
+| **Container Runtime** | Docker | Per-customer isolated AI agents |
+| **Reverse Proxy + TLS** | Caddy | Auto-SSL, domain routing |
+| **LLM Gateway** | LiteLLM v1.93+ | Model routing, virtual keys, spend tracking |
+| **LLM Backend** | AWS Bedrock | Claude 3.5, Llama 3.2, Mistral 7B |
+| **Database** | MySQL (WHMCS) + PostgreSQL (LiteLLM) | State, keys, usage |
+| **Agent UI** | Hermes Dashboard (Python) | Customer-facing agent interface |
+
+---
+
+## 🚀 Quick Start
+
+### 1. Prepare the Hermes VPS
+
+Run the setup script on your VPS to install Docker and generate SSH credentials for WHMCS:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/yeaminlabs/hermes-agent-whmcs/main/setup-vps.sh | bash
+```
+
+Copy the **IP address**, **username**, and **Access Hash** (private key) printed at the end.
+
+---
+
+### 2. Install the WHMCS Modules
+
+```bash
+# Clone into your WHMCS root
+cd /path/to/whmcs
+
+git clone https://github.com/yeaminlabs/hermes-agent-whmcs.git /tmp/hermesagent
+
+# Server module
+cp -r /tmp/hermesagent/modules/servers/hermesagent  modules/servers/
+
+# Addon module
+cp -r /tmp/hermesagent/modules/addons/hermesagent   modules/addons/
+```
+
+---
+
+### 3. Add the Server in WHMCS
+
+1. Go to **Setup → Servers → Add New Server**
+2. Set **Type** → `Hermes Agent`
+3. Paste the **IP**, **username**, and **Access Hash** from step 1
+4. Save — WHMCS will SSH-verify the connection
+
+---
+
+### 4. Deploy LiteLLM
+
+```bash
+cd litellm/
+cp config.yaml.example config.yaml   # edit with your AWS credentials
+
+docker compose up -d
+```
+
+> LiteLLM runs on port `4000`. Point the server module's `LiteLLM API URL` configurable option at it.
+
+---
+
+### 5. Activate the Addon
+
+1. **Setup → Addon Modules → Hermes Agent Manager → Activate**
+2. This creates the `mod_hermesagent_instances`, `mod_hermesagent_brain_config` tables and seeds the default AI endpoint.
+
+---
+
+## 🧠 Brain Management
+
+The **Brain Management** panel (WHMCS Admin → Addons → Hermes Agent Manager) lets you:
+
+| Action | What it does |
+|--------|-------------|
+| **Add Endpoint** | Register a new AI provider (LiteLLM proxy, Bedrock, OpenAI, custom) |
+| **Set Active** | Switch the global active brain — new containers will use this model |
+| **Push to All** | SSH into the VPS, patch `config.yaml` for every live container, restart them |
+| **View Usage** | See token counts and USD spend per container, pulled live from LiteLLM |
 
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/snbd-host-official/hermesagent.git
-git branch -M main
-git push -uf origin main
+Admin → Hermes Agent Manager
+│
+├── Brain Management
+│   ├── 🟢 SNBD Proxy (zai.glm-5)          ← active
+│   ├──    Claude 3.5 Haiku (Bedrock)
+│   └──    Mistral Voxtral Mini
+│
+└── Deployments
+    ├── hermes-10  │ Active  │ zai.glm-5  │ 12,450 tokens  │ $0.0023
+    └── hermes-11  │ Active  │ zai.glm-5  │  3,100 tokens  │ $0.0007
 ```
 
-## Integrate with your tools
+---
 
-* [Set up project integrations](https://gitlab.com/snbd-host-official/hermesagent/-/settings/integrations)
+## 📁 Repository Structure
 
-## Collaborate with your team
+```
+hermesagent/
+├── modules/
+│   ├── servers/
+│   │   └── hermesagent/
+│   │       ├── hermesagent.php      ← provisioning logic (CreateAccount, Suspend, etc.)
+│   │       ├── ajax.php             ← admin AJAX endpoints
+│   │       └── templates/           ← client-area views
+│   └── addons/
+│       └── hermesagent/
+│           └── hermesagent.php      ← admin panel (Brain Management, deployments, leads)
+├── litellm/
+│   └── config.yaml                  ← LiteLLM gateway config (models, routing, keys)
+└── setup-vps.sh                     ← one-shot VPS provisioner
+```
 
-* [Invite team members and collaborators](https://docs.gitlab.com/user/project/members/)
-* [Create a new merge request](https://docs.gitlab.com/user/project/merge_requests/creating_merge_requests/)
-* [Automatically close issues from merge requests](https://docs.gitlab.com/user/project/issues/managing_issues/#closing-issues-automatically)
-* [Enable merge request approvals](https://docs.gitlab.com/user/project/merge_requests/approvals/)
-* [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+---
 
-## Test and Deploy
+## 🔒 Security Model
 
-Use the built-in continuous integration in GitLab.
+<details>
+<summary><b>Per-container isolation details</b></summary>
 
-* [Get started with GitLab CI/CD](https://docs.gitlab.com/ci/quick_start/)
-* [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/user/application_security/sast/)
-* [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/topics/autodevops/requirements/)
-* [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/user/clusters/agent/)
-* [Set up protected environments](https://docs.gitlab.com/ci/environments/protected_environments/)
+Every container is launched with:
 
-***
+```bash
+docker run -d \
+  --name hermes-{id} \
+  --network hermes-net-{id} \          # isolated bridge — no cross-container traffic
+  --cap-drop ALL \                      # drop all Linux capabilities
+  --security-opt no-new-privileges \    # no privilege escalation
+  --ipc=none \                          # no shared memory
+  --pids-limit 100 \                    # fork bomb protection
+  --memory 1g \
+  --cpus 1.0 \
+  ...
+```
 
-# Editing this README
+Each container's LiteLLM API key is scoped to:
+- Its allowed **model list**
+- A **max budget** cap (`$5.00` default)
+- **TPM limit** (100k tokens/min) and **RPM limit** (60 req/min)
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+Keys are suspended automatically when the WHMCS service is suspended.
 
-## Suggestions for a good README
+</details>
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+<details>
+<summary><b>LiteLLM virtual key lifecycle</b></summary>
 
-## Name
-Choose a self-explaining name for your project.
+| WHMCS Event | LiteLLM Action |
+|-------------|----------------|
+| `CreateAccount` | `POST /key/generate` → `hermes-{id}` |
+| `SuspendAccount` | `POST /key/update` → `blocked: true` |
+| `UnsuspendAccount` | `POST /key/update` → `blocked: false` |
+| `TerminateAccount` | `POST /key/delete` |
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+Keys are created with `user_id: "hermes-{id}"` so they appear as distinct customers in the LiteLLM Customer Usage dashboard.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+</details>
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+---
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+## 🛣️ Roadmap
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+- [x] Auto-provision Docker containers via WHMCS
+- [x] Per-customer network isolation
+- [x] Caddy auto-SSL domain routing
+- [x] LiteLLM virtual key per container
+- [x] Brain Management panel (push model to all containers)
+- [x] Token tracking + spend per container in admin
+- [x] Customer Usage view in LiteLLM (user_id per key)
+- [ ] Per-container disk quota enforcement
+- [ ] Self-service model selector in client area
+- [ ] Multi-VPS support (deploy across a fleet)
+- [ ] Webhook notifications on container health change
+- [ ] Prometheus metrics export
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+---
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+## 🤝 Contributing
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+This module is maintained by [SNBD Host](https://snbdhost.com). Pull requests welcome for bug fixes and improvements. For new features, open an issue first to discuss.
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+---
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+<div align="center">
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+<img src="https://capsule-render.vercel.app/api?type=waving&color=0:24243e,50:302b63,100:0f0c29&height=120&section=footer" width="100%"/>
 
-## License
-For open source projects, say how it is licensed.
+**Built with ❤️ by [SNBD Host](https://snbdhost.com)**
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+*Hermes — the messenger god, delivering AI to your customers.*
+
+</div>
