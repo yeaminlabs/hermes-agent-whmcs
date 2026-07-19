@@ -423,23 +423,34 @@
         </div>
     {/if}
 
-    <!-- Powered by Gemma -->
+    <!-- Powered by Mistral Ministral -->
     <div class="glass-card-green d-flex align-items-start gap-4">
-        <div class="display-5 text-success"><i class="fas fa-robot"></i></div>
+        <div class="flex-shrink-0 d-flex flex-column align-items-center gap-2" style="min-width:64px;">
+            <img src="https://docs.mistral.ai/assets/models/Ministral.svg" alt="Ministral" style="width:52px;height:52px;object-fit:contain;" onerror="this.style.display='none'">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e6/Mistral_AI_logo_%282025%E2%80%93%29.svg/1280px-Mistral_AI_logo_%282025%E2%80%93%29.svg.png" alt="Mistral AI" style="width:72px;object-fit:contain;filter:brightness(0) saturate(100%) invert(40%) sepia(60%) saturate(500%) hue-rotate(100deg);" onerror="this.style.display='none'">
+        </div>
         <div>
-            <h4 class="fw-bold text-success mb-2 fs-5">Powered by Google Gemma</h4>
-            <p class="text-success text-opacity-75 mb-0" style="font-size: 14.5px;">
-                This agent is powered by <strong>Google Gemma</strong> technology. You are exclusively allowed to use the model <strong><code>bedrock_mantle/google.gemma-4-e2b</code></strong> for your agentic work. You are initially allowed to use up to <strong>10M tokens combined</strong>. Gemma 4 provides an immense capability for coding, problem-solving, and general reasoning. All you have to do is switch to the <strong><code>bedrock_mantle/google.gemma-4-e2b</code></strong> model in your settings and it will work instantly.
+            <h4 class="fw-bold text-success mb-1 fs-5">
+                Powered by Mistral — Ministral 3B &amp; 14B
+                <span class="badge bg-success text-white ms-2" style="font-size:11px;vertical-align:middle;">BEST AGENTIC AI</span>
+                <span class="badge bg-primary text-white ms-1" style="font-size:11px;vertical-align:middle;">OPEN SOURCE</span>
+                <span class="badge bg-warning text-dark ms-1" style="font-size:11px;vertical-align:middle;">FREE</span>
+            </h4>
+            <p class="text-success text-opacity-75 mb-1" style="font-size: 14.5px;">
+                Your agent runs on <strong>Mistral Ministral</strong> — the best open-source agentic AI ever built. Ministral was purpose-designed for tool use, multi-step reasoning, and autonomous task execution. Use the model <strong><code>mistral.ministral-3-14b-instruct</code></strong> for all your agentic work. It delivers elite performance at zero cost to you — fast, smart, and fully open.
             </p>
+            <a href="https://docs.mistral.ai/models/model-cards/ministral-3-14b-25-12" target="_blank" rel="noopener" class="btn btn-sm btn-outline-success mt-1" style="font-size:12.5px;">
+                <i class="fas fa-book me-1"></i> Ministral Model Card — Official Docs
+            </a>
         </div>
     </div>
 
-    <!-- Free Gemma Quota -->
+    <!-- Free Mistral Quota -->
     <div class="card mb-4">
         <div class="card-body p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h4 class="mb-0 fs-6 fw-bold text-dark d-flex align-items-center gap-2">
-                    <i class="fas fa-chart-pie text-success"></i> Free Gemma Quota
+                    <i class="fas fa-chart-pie text-success"></i> Free Mistral Quota
                 </h4>
                 <span class="badge bg-warning text-dark rounded-pill px-3 py-2 fw-semibold">{$days_remaining} Access</span>
             </div>
@@ -607,7 +618,7 @@
             <div class="mt-4 p-3 bg-light rounded-3 text-center border">
                 <div class="mb-2" style="font-size: 14px;">
                     <span class="text-muted fw-semibold me-2">Model Filtered:</span>
-                    <code class="bg-success bg-opacity-10 text-success px-2 py-1 rounded fw-bold">bedrock_mantle/google.gemma-4-e2b</code>
+                    <code class="bg-success bg-opacity-10 text-success px-2 py-1 rounded fw-bold">mistral.ministral-3-14b-instruct</code>
                 </div>
                 <div style="font-size: 14px;">
                     <span class="text-muted fw-semibold">Input Tokens:</span> <span class="text-primary fw-bold">{$stat_prompt_tokens|number_format|default:0}</span> 
