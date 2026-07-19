@@ -23,21 +23,25 @@ if (!$uid) { echo json_encode(['success' => false, 'error' => 'Not logged in']);
 $svc = Capsule::table('tblhosting')->where('id', $serviceId)->where('userid', $uid)->first();
 if (!$svc) { echo json_encode(['success' => false, 'error' => 'Unauthorized']); exit; }
 
-// ─── Server credentials ──────────────────────────────────────────────────────
+$action = $_POST['action'] ?? $_GET['action'] ?? '';
+
+// ─── Server credentials (only load if needed) ─────────────────────────────────
 
 $server = Capsule::table('tblservers')->where('id', $svc->serverid)->first();
-if (!$server) { echo json_encode(['success' => false, 'error' => 'Server config not found']); exit; }
-
-$serverParams = [
-    'serverip'         => $server->ipaddress,
-    'serverhostname'   => $server->hostname,
-    'serverport'       => $server->port ?: 22,
-    'serverusername'   => $server->username,
-    'serverpassword'   => decrypt($server->password),
-    'serveraccesshash' => $server->accesshash,
-];
-
-$action = $_POST['action'] ?? $_GET['action'] ?? '';
+$serverParams = [];
+if ($server) {
+    $serverParams = [
+        'serverip'         => $server->ipaddress,
+        'serverhostname'   => $server->hostname,
+        'serverport'       => $server->port ?: 22,
+        'serverusername'   => $server->username,
+        'serverpassword'   => function_exists('decrypt') ? decrypt($server->password) : '',
+        'serveraccesshash' => $server->accesshash,
+    ];
+} else if (!in_array($action, ['save_onboarding', 'provision_status'])) {
+    echo json_encode(['success' => false, 'error' => 'Server config not found']); 
+    exit;
+}
 
 if ($action === 'save_onboarding') {
     try {
