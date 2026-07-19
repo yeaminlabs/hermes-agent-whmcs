@@ -455,6 +455,30 @@ function hermesagent_get_ssh_client($params, $timeout = 30) {
 }
 
 /**
+ * Get the currently active brain (AI endpoint) from the brain_config table.
+ * Falls back to hardcoded SNBD proxy defaults if the table doesn't exist yet.
+ */
+if (!function_exists('hermesagent_get_active_brain')) {
+    function hermesagent_get_active_brain() {
+        $defaults = [
+            'id'            => 0,
+            'display_name'  => 'SNBD Proxy (ZAI GLM-5)',
+            'provider_type' => 'proxy',
+            'base_url'      => 'https://ai-proxy.snbdhost.com/v1',
+            'model_name'    => 'zai.glm-5',
+            'api_key'       => 'sk-snbdhost-master-key-2026',
+            'is_active'     => 1,
+        ];
+        try {
+            $row = Capsule::table('mod_hermesagent_brain_config')->where('is_active', 1)->first();
+            return $row ? (array) $row : $defaults;
+        } catch (\Exception $e) {
+            return $defaults;
+        }
+    }
+}
+
+/**
  * Core Account Provisioning
  */
 function hermesagent_CreateAccount($params) {
@@ -473,13 +497,19 @@ function hermesagent_CreateAccount($params) {
     $enableApiServer = hermesagent_resolve_param($params, 'configoption8', 'Enable OpenAI-Compatible API', 'no');
     $resourceTier = hermesagent_resolve_param($params, 'configoption9', 'Resource Tier', 'Starter (1 vCPU / 1GB)');
     $dockerImageTag = hermesagent_resolve_param($params, 'configoption10', 'Image Version', 'latest');
-    // Hardcode proxy — these are always the SNBD central proxy values
+    // Pull active brain config — admin-controlled from the Brain Management panel
+    $brain         = hermesagent_get_active_brain();
+    $brainBaseUrl  = rtrim($brain['base_url'], '/');   // e.g. https://ai-proxy.snbdhost.com/v1
+    $brainApiKey   = $brain['api_key'] ?? 'sk-snbdhost-master-key-2026';
+    $brainModel    = $brain['model_name'] ?? 'zai.glm-5';
+    // LiteLLM management API URL (without /v1 suffix)
+    $litellmApiUrl = rtrim(preg_replace('|/v1/?$|', '', $brainBaseUrl), '/');
     $litellmCfg = [
-        'url'   => 'https://ai-proxy.snbdhost.com',
-        'key'   => 'sk-snbdhost-master-key-2026',
-        'model' => 'zai.glm-5',
+        'url'   => $litellmApiUrl,
+        'key'   => $brainApiKey,
+        'model' => $brainModel,
     ];
-    $litellmModel = $litellmCfg['model'];
+    $litellmModel = $brainModel;
     
     // Check if record exists
     $record = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceid)->first();
@@ -599,14 +629,14 @@ function hermesagent_CreateAccount($params) {
             }
 
             if (!empty($litellmKey) && !empty($litellmCfg['url'])) {
-                $envLines[] = "OPENAI_API_BASE=" . $litellmCfg['url'] . "/v1";
-                $envLines[] = "OPENAI_BASE_URL=" . $litellmCfg['url'] . "/v1";
+                $envLines[] = "OPENAI_API_BASE=" . $brainBaseUrl;
+                $envLines[] = "OPENAI_BASE_URL=" . $brainBaseUrl;
                 $envLines[] = "OPENAI_API_KEY=" . $litellmKey;
             } else {
                 // Last resort fallback — master key so agent at least boots
-                $envLines[] = "OPENAI_API_BASE=" . ($litellmCfg['url'] ?? 'https://ai-proxy.snbdhost.com') . "/v1";
-                $envLines[] = "OPENAI_BASE_URL=" . ($litellmCfg['url'] ?? 'https://ai-proxy.snbdhost.com') . "/v1";
-                $envLines[] = "OPENAI_API_KEY=" . ($litellmCfg['key'] ?? '');
+                $envLines[] = "OPENAI_API_BASE=" . $brainBaseUrl;
+                $envLines[] = "OPENAI_BASE_URL=" . $brainBaseUrl;
+                $envLines[] = "OPENAI_API_KEY=" . $brainApiKey;
                 logModuleCall('hermesagent', 'CreateAccount_LiteLLM_Fallback_MasterKey', $serviceid, "Used master key as fallback for service $serviceid");
             }
         } elseif ($llmProvider === 'openrouter') {
@@ -1026,11 +1056,14 @@ HTML;
         $setupCmds .= "except Exception:\n";
         $setupCmds .= "    cfg = {}\n";
         $setupCmds .= "cfg['system_prompt'] = {'replace': '{$escapedSystemPrompt}'}\n";
+        $escapedBrainUrl   = addslashes($brainBaseUrl);
+        $escapedBrainKey   = addslashes($brainApiKey);
+        $escapedBrainModel = addslashes($brainModel);
         $setupCmds .= "if isinstance(cfg.get('model'), dict):\n";
-        $setupCmds .= "    cfg['model']['base_url'] = 'https://ai-proxy.snbdhost.com/v1'\n";
-        $setupCmds .= "    cfg['model']['api_key']  = 'sk-snbdhost-master-key-2026'\n";
+        $setupCmds .= "    cfg['model']['base_url'] = '{$escapedBrainUrl}'\n";
+        $setupCmds .= "    cfg['model']['api_key']  = '{$escapedBrainKey}'\n";
         $setupCmds .= "    cfg['model']['provider'] = 'custom'\n";
-        $setupCmds .= "    cfg['model']['default']  = 'zai.glm-5'\n";
+        $setupCmds .= "    cfg['model']['default']  = '{$escapedBrainModel}'\n";
         $setupCmds .= "cfg['terminal'] = {'backend': 'local', 'timeout': 180, 'cwd': '/opt/data'}\n";
         $setupCmds .= "with open(cfg_path, 'w') as f:\n";
         $setupCmds .= "    yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True)\n";
@@ -1103,7 +1136,11 @@ CADDY;
 
         Capsule::table('mod_hermesagent_instances')
             ->where('serviceid', $serviceid)
-            ->update(['status' => 'Active', 'updated_at' => date('Y-m-d H:i:s')]);
+            ->update([
+                'status'        => 'Active',
+                'current_model' => $brainModel,
+                'updated_at'    => date('Y-m-d H:i:s'),
+            ]);
 
         return "success";
     } catch (\Exception $e) {
