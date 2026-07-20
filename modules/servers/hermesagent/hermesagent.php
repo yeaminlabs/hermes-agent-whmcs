@@ -822,7 +822,6 @@ model:
   provider: custom
   base_url: "{$proxyBaseUrl}"
   api_key: "{$proxyApiKey}"
-system_prompt: "{$systemPrompt}"
 dashboard:
   show_token_analytics: true
 tool_loop_guardrails:
@@ -841,7 +840,6 @@ model_list:
   - model_name: "{$modelName}"
     litellm_params:
       model: "bedrock/{$modelName}"
-system_prompt: "{$systemPrompt}"
 dashboard:
   show_token_analytics: true
 tool_loop_guardrails:
@@ -856,7 +854,6 @@ YAML;
         } else {
             $yamlContent = <<<YAML
 model: "{$llmProvider}/{$modelName}"
-system_prompt: "{$systemPrompt}"
 dashboard:
   show_token_analytics: true
 tool_loop_guardrails:
