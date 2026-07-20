@@ -778,13 +778,18 @@
             const res = await fetch(API_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API_KEY },
-                body: JSON.stringify({ model: "hermes-default", messages: history, temperature: 0.7 })
+                body: JSON.stringify({ model: "mistral.ministral-3-14b-instruct", messages: history, temperature: 0.7 })
             });
+            if (!res.ok) {
+                const errData = await res.text();
+                throw new Error(`API Error ${res.status}: ${errData}`);
+            }
             const data = await res.json();
             const reply = data.choices[0].message.content;
             addMsg(reply, false);
             history.push({ role: "assistant", content: reply });
         } catch (e) {
+            console.error("Hermes Widget Error:", e);
             addMsg("Sorry, I am having trouble connecting right now.", false);
         }
         input.disabled = sendBtn.disabled = false;
