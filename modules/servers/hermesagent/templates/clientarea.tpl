@@ -696,7 +696,7 @@
 &lt;!-- Hermes Agent Live Chat Widget --&gt;
 &lt;script&gt;
 (function() {literal}{{/literal}
-    const API_URL = "{$api_url}/v1/chat/completions";
+    const API_URL = "{$api_url}/chat/completions";
     const API_KEY = "{$api_key}";
 {literal}
     const style = document.createElement('style');
@@ -790,7 +790,7 @@
             history.push({ role: "assistant", content: reply });
         } catch (e) {
             console.error("Hermes Widget Error:", e);
-            addMsg("Sorry, I am having trouble connecting right now.", false);
+            addMsg("Error: " + e.message, false);
         }
         input.disabled = sendBtn.disabled = false;
         input.focus();
