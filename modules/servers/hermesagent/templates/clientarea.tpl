@@ -691,6 +691,10 @@
                 Copy and paste this HTML snippet into the <code class="bg-light px-1 rounded">&lt;body&gt;</code> of your website (WordPress, Shopify, etc.) to instantly add a floating AI customer support chat that connects directly to your Hermes Agent.
             </p>
             
+            <div class="alert alert-warning mb-4" style="font-size: 13.5px; border-left: 4px solid #ffc107; background-color: #fff3cd; color: #856404;">
+                <strong><i class="fas fa-exclamation-triangle"></i> Warning:</strong> This code exposes a LIVE API key hardcoded into the code itself to work. Please do not leave it online, a lot of ai calls might ban your account. Use this widget responsibly.
+            </div>
+            
             <div class="position-relative">
                 <textarea id="hermesWidgetCode" readonly class="form-control font-monospace bg-dark text-light border-0 shadow-inner p-4 rounded-4" style="height: 250px; font-size: 13px; resize: vertical;" onclick="this.select();">
 &lt;!-- Hermes Agent Live Chat Widget --&gt;
