@@ -504,6 +504,67 @@ PYEOF;
     exit;
 }
 
+if ($action === 'chat_proxy') {
+    $messages = json_decode($_POST['messages'] ?? '[]', true);
+    if (!is_array($messages) || empty($messages)) {
+        echo json_encode(['success' => false, 'error' => 'No messages provided']); exit;
+    }
+
+    // Sanitize message array — only allow role/content keys
+    $clean = [];
+    foreach ($messages as $msg) {
+        $role = in_array($msg['role'] ?? '', ['system','user','assistant']) ? $msg['role'] : null;
+        $content = substr(trim($msg['content'] ?? ''), 0, 16000);
+        if ($role && $content !== '') $clean[] = ['role' => $role, 'content' => $content];
+    }
+    if (empty($clean)) { echo json_encode(['success' => false, 'error' => 'Empty message list']); exit; }
+    if (count($clean) > 100) { echo json_encode(['success' => false, 'error' => 'Too many messages']); exit; }
+
+    $apiUrl = "http://{$server->ipaddress}:{$instance->api_port}/v1/chat/completions";
+    $apiKey = $instance->api_key;
+
+    $payload = json_encode([
+        'model'       => 'mistral.ministral-3-14b-instruct',
+        'messages'    => $clean,
+        'temperature' => 0.7,
+        'stream'      => false,
+    ]);
+
+    $ch = curl_init($apiUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 60,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => $payload,
+        CURLOPT_HTTPHEADER     => [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . $apiKey,
+        ],
+    ]);
+    $resp = curl_exec($ch);
+    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $err  = curl_error($ch);
+    curl_close($ch);
+
+    if ($err) {
+        echo json_encode(['success' => false, 'error' => 'Could not reach agent: ' . $err]); exit;
+    }
+    if ($code !== 200) {
+        $detail = json_decode($resp, true);
+        $msg = $detail['error']['message'] ?? $detail['message'] ?? "HTTP {$code}";
+        echo json_encode(['success' => false, 'error' => "Agent API error: {$msg}"]); exit;
+    }
+
+    $data = json_decode($resp, true);
+    $reply = $data['choices'][0]['message']['content'] ?? '';
+    echo json_encode([
+        'success' => true,
+        'reply'   => $reply,
+        'usage'   => $data['usage'] ?? null,
+    ]);
+    exit;
+}
+
 if ($action === 'terminal_exec') {
     $rawCmd = trim($_POST['command'] ?? '');
 

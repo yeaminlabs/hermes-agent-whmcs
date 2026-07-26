@@ -1508,6 +1508,7 @@ function hermesagent_ChangePackage($params) {
  */
 function hermesagent_ClientAreaCustomButtonArray() {
     return [
+        'Chat with Agent' => 'manage_chat',
         'Manage LLM Providers' => 'manage_llm',
         'MCP Servers' => 'manage_mcp',
         'Terminal' => 'manage_terminal',
@@ -1878,6 +1879,25 @@ function hermesagent_manage_mcp($params) {
             'installed'        => $installed,
             'error'            => $error,
             'deployment_status'=> $params['status'],
+        ]
+    ];
+}
+
+function hermesagent_manage_chat($params) {
+    $serviceid = intval($params['serviceid']);
+    $record = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceid)->first();
+    $agentName = 'Hermes Agent';
+    if ($record) {
+        // Try to get a friendly agent name from onboarding
+        $onb = Capsule::table('mod_hermesagent_onboarding')->where('serviceid', $serviceid)->first();
+        if ($onb && !empty($onb->agent_name)) $agentName = $onb->agent_name;
+    }
+    return [
+        'templatefile' => 'templates/manage_chat',
+        'vars' => [
+            'serviceid'         => $serviceid,
+            'agent_name'        => $agentName,
+            'deployment_status' => $params['status'],
         ]
     ];
 }

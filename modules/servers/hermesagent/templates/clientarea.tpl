@@ -401,6 +401,9 @@
                     <span class="status-dot"></span>
                     Running
                 </span>
+                <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=manage_chat" class="hermes-btn-primary" style="background:#1d4ed8;">
+                    <i class="fas fa-comment-dots"></i> Chat
+                </a>
                 <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=manage_llm" class="hermes-btn-primary">
                     <i class="fas fa-microchip"></i> Manage LLMs
                 </a>
