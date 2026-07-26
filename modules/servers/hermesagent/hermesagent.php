@@ -1509,6 +1509,7 @@ function hermesagent_ChangePackage($params) {
 function hermesagent_ClientAreaCustomButtonArray() {
     return [
         'Manage LLM Providers' => 'manage_llm',
+        'MCP Servers' => 'manage_mcp',
         'Restart Agent' => 'restart',
         'View Logs' => 'viewlogs',
         'Regenerate Password' => 'regenpassword',
@@ -1841,6 +1842,43 @@ function hermesagent_update_llm($params) {
         header("Location: clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=manage_llm&error=1");
         exit;
     }
+}
+
+/**
+ * Custom action: Manage MCP Servers
+ */
+function hermesagent_manage_mcp($params) {
+    $serviceid = intval($params['serviceid']);
+
+    $installed = [];
+    $error = '';
+
+    try {
+        $ssh     = hermesagent_get_ssh_client($params, 10);
+        $dataDir = "/srv/hermes/{$serviceid}/data";
+
+        // Read installed MCP servers from config.yaml
+        $raw = $ssh->exec("cat \"{$dataDir}/config.yaml\" 2>/dev/null || echo ''");
+        if ($raw) {
+            // Parse mcp_servers section — look for keys under mcp_servers
+            if (preg_match('/^mcp_servers\s*:(.*?)(?=^\S|\z)/ms', $raw, $m)) {
+                preg_match_all('/^\s{2}(\w[\w\-]+)\s*:/m', $m[1], $keys);
+                $installed = $keys[1] ?? [];
+            }
+        }
+    } catch (\Exception $e) {
+        $error = $e->getMessage();
+    }
+
+    return [
+        'templatefile' => 'templates/manage_mcp',
+        'vars' => [
+            'serviceid'        => $serviceid,
+            'installed'        => $installed,
+            'error'            => $error,
+            'deployment_status'=> $params['status'],
+        ]
+    ];
 }
 
 // ═══════════════════════════════════════════════════════════════

@@ -325,4 +325,183 @@ if ($action === 'disconnect_messaging') {
     exit;
 }
 
+// ─── MCP catalog — extend this list to add more servers ──────────────────────
+
+function hermesagent_mcp_catalog() {
+    return [
+        'n8n' => [
+            'install_dir' => '/opt/data/mcp/n8n',
+            'repo'        => 'https://github.com/CyberSamuraiX/hermes-n8n-mcp.git',
+            'fields'      => ['N8N_BASE_URL', 'N8N_API_KEY'],
+            'bootstrap'   => [
+                'git clone --depth 1 {repo} {dir} 2>&1 || (cd {dir} && git pull)',
+                'cd {dir} && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt -q',
+            ],
+            'command'     => '{dir}/.venv/bin/python',
+            'args'        => ['{dir}/server.py'],
+        ],
+        'linear' => [
+            'install_dir' => '/opt/data/mcp/linear',
+            'repo'        => null,
+            'endpoint'    => 'https://mcp.linear.app/mcp',
+            'fields'      => ['LINEAR_API_KEY'],
+            'bootstrap'   => [],
+            'transport'   => 'http',
+        ],
+    ];
+}
+
+if ($action === 'list_mcp') {
+    $dataDir = "/srv/hermes/{$serviceId}/data";
+    try {
+        $ssh  = hermesagent_get_ssh_client($serverParams, 10);
+        $raw  = trim($ssh->exec("cat \"{$dataDir}/config.yaml\" 2>/dev/null || echo ''"));
+        $installed = [];
+        if ($raw && preg_match('/^mcp_servers\s*:(.*?)(?=^\S|\z)/ms', $raw, $m)) {
+            preg_match_all('/^\s{2}(\w[\w\-]+)\s*:/m', $m[1], $keys);
+            $installed = array_values($keys[1] ?? []);
+        }
+        echo json_encode(['success' => true, 'installed' => $installed]);
+    } catch (\Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'install_mcp') {
+    $serverId = trim($_POST['mcp_server'] ?? '');
+    $catalog  = hermesagent_mcp_catalog();
+
+    if (!isset($catalog[$serverId])) {
+        echo json_encode(['success' => false, 'error' => 'Unknown MCP server']); exit;
+    }
+
+    $cfg     = $catalog[$serverId];
+    $dataDir = "/srv/hermes/{$serviceId}/data";
+    $dir     = $cfg['install_dir'];
+
+    // Collect env vars from POST
+    $envVars = [];
+    foreach (($cfg['fields'] ?? []) as $field) {
+        $val = trim($_POST[$field] ?? '');
+        if ($val === '') {
+            echo json_encode(['success' => false, 'error' => "Field {$field} is required"]); exit;
+        }
+        $envVars[$field] = $val;
+    }
+
+    try {
+        $ssh = hermesagent_get_ssh_client($serverParams, 60);
+
+        // Run bootstrap commands inside the container
+        $cmd = '';
+        if (!empty($cfg['bootstrap'])) {
+            $repo = $cfg['repo'] ?? '';
+            foreach ($cfg['bootstrap'] as $step) {
+                $step = str_replace(['{repo}', '{dir}'], [$repo, $dir], $step);
+                $cmd .= "docker exec hermes-{$serviceId} sh -c " . escapeshellarg($step) . " 2>&1\n";
+            }
+        }
+
+        // Patch config.yaml via Python inside the container
+        $envJson = json_encode($envVars);
+
+        if (!empty($cfg['command'])) {
+            // stdio MCP server
+            $command = str_replace('{dir}', $dir, $cfg['command']);
+            $args    = array_map(fn($a) => str_replace('{dir}', $dir, $a), $cfg['args'] ?? []);
+            $argsJson = json_encode($args);
+
+            $pyScript = <<<PYEOF
+import yaml, json, sys
+p = '{$dataDir}/config.yaml'
+try:
+    with open(p) as f: cfg = yaml.safe_load(f) or {}
+except: cfg = {}
+if not isinstance(cfg.get('mcp_servers'), dict): cfg['mcp_servers'] = {}
+cfg['mcp_servers']['{$serverId}'] = {
+    'transport': 'stdio',
+    'command': '{$command}',
+    'args': {$argsJson},
+    'env': {$envJson}
+}
+with open(p, 'w') as f: yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True)
+print('CONFIG_PATCHED')
+PYEOF;
+        } else {
+            // HTTP MCP server
+            $endpoint = $cfg['endpoint'] ?? '';
+            $headerKey = array_key_first($envVars);
+            $headerVal = $envVars[$headerKey] ?? '';
+
+            $pyScript = <<<PYEOF
+import yaml, json
+p = '{$dataDir}/config.yaml'
+try:
+    with open(p) as f: cfg = yaml.safe_load(f) or {}
+except: cfg = {}
+if not isinstance(cfg.get('mcp_servers'), dict): cfg['mcp_servers'] = {}
+cfg['mcp_servers']['{$serverId}'] = {
+    'transport': 'http',
+    'url': '{$endpoint}',
+    'headers': {$envJson}
+}
+with open(p, 'w') as f: yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True)
+print('CONFIG_PATCHED')
+PYEOF;
+        }
+
+        $cmd .= "python3 - << 'PYEOF_MCP'\n{$pyScript}\nPYEOF_MCP\n";
+        $cmd .= "docker restart hermes-{$serviceId} >/dev/null 2>&1 && echo 'MCP_INSTALLED' || echo 'RESTART_FAILED'\n";
+
+        $result = $ssh->exec($cmd);
+        logModuleCall('hermesagent', 'install_mcp', $serverId, $result);
+
+        if (strpos($result, 'MCP_INSTALLED') !== false) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Install failed. Check server logs.', 'output' => substr($result, -500)]);
+        }
+    } catch (\Exception $e) {
+        echo json_encode(['success' => false, 'error' => 'SSH error: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'remove_mcp') {
+    $serverId = preg_replace('/[^a-z0-9_\-]/', '', trim($_POST['mcp_server'] ?? ''));
+    $dataDir  = "/srv/hermes/{$serviceId}/data";
+
+    try {
+        $ssh = hermesagent_get_ssh_client($serverParams, 20);
+
+        $pyScript = <<<PYEOF
+import yaml
+p = '{$dataDir}/config.yaml'
+try:
+    with open(p) as f: cfg = yaml.safe_load(f) or {}
+except: cfg = {}
+if isinstance(cfg.get('mcp_servers'), dict):
+    cfg['mcp_servers'].pop('{$serverId}', None)
+    if not cfg['mcp_servers']: del cfg['mcp_servers']
+with open(p, 'w') as f: yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True)
+print('REMOVED')
+PYEOF;
+
+        $cmd  = "python3 - << 'PYEOF_RM'\n{$pyScript}\nPYEOF_RM\n";
+        $cmd .= "docker restart hermes-{$serviceId} >/dev/null 2>&1 && echo 'MCP_REMOVED' || echo 'RESTART_FAILED'\n";
+
+        $result = $ssh->exec($cmd);
+
+        if (strpos($result, 'MCP_REMOVED') !== false) {
+            echo json_encode(['success' => true]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Remove failed.']);
+        }
+    } catch (\Exception $e) {
+        echo json_encode(['success' => false, 'error' => 'SSH error: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(['success' => false, 'error' => 'Unknown action']);
