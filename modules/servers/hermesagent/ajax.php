@@ -27,7 +27,7 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
 // ─── Server credentials (only load if needed) ─────────────────────────────────
 
-$server = Capsule::table('tblservers')->where('id', $svc->serverid)->first();
+$server = Capsule::table('tblservers')->where('id', $svc->server)->first();
 $serverParams = [];
 if ($server) {
     $serverParams = [
