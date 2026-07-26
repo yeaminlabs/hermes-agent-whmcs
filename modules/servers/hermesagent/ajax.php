@@ -505,9 +505,13 @@ PYEOF;
 }
 
 if ($action === 'chat_proxy') {
-    $messages = json_decode($_POST['messages'] ?? '[]', true);
+    // WHMCS init.php HTML-encodes POST values — decode before json_decode
+    $rawMsg = $_POST['messages'] ?? '';
+    if ($rawMsg === '') { echo json_encode(['success' => false, 'error' => 'No messages provided']); exit; }
+    $rawMsg   = html_entity_decode($rawMsg, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $messages = json_decode($rawMsg, true);
     if (!is_array($messages) || empty($messages)) {
-        echo json_encode(['success' => false, 'error' => 'No messages provided']); exit;
+        echo json_encode(['success' => false, 'error' => 'No messages provided (json_err: ' . json_last_error_msg() . ')']); exit;
     }
 
     // Sanitize message array — only allow role/content keys
