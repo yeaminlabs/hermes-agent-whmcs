@@ -253,7 +253,8 @@
                         {/if}
                     </div>
                 </div>
-                <div class="msg-card-body" id="body-telegram" style="{if $telegram_token}display:none{else}display:none{/if}">
+                <div class="msg-card-body" id="body-telegram" style="display:none;">
+                    {if !$telegram_token}
                     <p class="msg-instruction">
                         1. Open Telegram and message <strong>@BotFather</strong><br>
                         2. Send <code>/newbot</code> and follow the steps<br>
@@ -266,6 +267,23 @@
                         </button>
                     </div>
                     <div id="feedback-telegram" style="display:none;" class="msg-feedback"></div>
+                    {else}
+                    <div class="pairing-box" id="pairing-box-telegram">
+                        <h4><i class="fas fa-key"></i> Pair yourself with your Telegram bot</h4>
+                        <div class="pairing-steps">
+                            1. Open Telegram and send any message to your bot<br>
+                            2. The bot will reply with: <code>Here's your pairing code: XXXXXXXX</code><br>
+                            3. Enter that code below to authorize yourself
+                        </div>
+                        <div class="pairing-input-row">
+                            <input type="text" id="pair-code-telegram" maxlength="12" placeholder="e.g. 97JQLXQK" oninput="this.value=this.value.toUpperCase()">
+                            <button type="button" class="btn-pair" id="btn-pair-telegram" onclick="approvePairing('telegram')">
+                                <i class="fas fa-check"></i> Approve
+                            </button>
+                        </div>
+                        <div id="pair-feedback-telegram" style="display:none;" class="pair-feedback"></div>
+                    </div>
+                    {/if}
                 </div>
             </div>
 
@@ -354,13 +372,59 @@
             </div>
         </div>
 
+        <!-- Pairing section (shown after connect or if already connected) -->
+        <style>
+        .pairing-box {
+            margin-top: 14px; padding: 16px 18px;
+            background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px;
+        }
+        .pairing-box h4 {
+            margin: 0 0 8px; font-size: 14px; font-weight: 700; color: #92400e;
+            display: flex; align-items: center; gap: 7px;
+        }
+        .pairing-steps { font-size: 13px; color: #78350f; line-height: 1.8; margin-bottom: 12px; }
+        .pairing-steps code {
+            background: rgba(0,0,0,0.06); padding: 1px 6px; border-radius: 4px;
+            font-family: monospace; font-size: 12px;
+        }
+        .pairing-input-row { display: flex; gap: 8px; align-items: center; }
+        .pairing-input-row input {
+            flex: 1; padding: 9px 13px; border: 1px solid #fbbf24; border-radius: 7px;
+            font-size: 14px; font-family: monospace; font-weight: 700; letter-spacing: .1em;
+            text-transform: uppercase; outline: none; background: #fff;
+        }
+        .pairing-input-row input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(251,191,36,.2); }
+        .btn-pair {
+            background: #d97706; color: #fff; border: none;
+            padding: 9px 16px; border-radius: 7px; font-size: 13px;
+            font-weight: 700; cursor: pointer; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-pair:hover { background: #b45309; }
+        .btn-pair:disabled { background: #d1d5db; cursor: not-allowed; }
+        .pair-feedback {
+            margin-top: 10px; padding: 9px 13px; border-radius: 7px;
+            font-size: 13px; font-weight: 600;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .pair-feedback.success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+        .pair-feedback.error   { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+        .pair-feedback.working { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+        </style>
+
         <script>
         var _msgServiceId = {$serviceid};
         var _msgAjaxUrl = 'modules/servers/hermesagent/ajax.php';
 
         function msgToggle(platform) {
             var body = document.getElementById('body-' + platform);
-            body.style.display = body.style.display === 'none' ? 'block' : 'none';
+            var isNowOpen = body.style.display === 'none';
+            body.style.display = isNowOpen ? 'block' : 'none';
+            // If already connected and opening, show pairing box
+            var badge = document.getElementById('badge-' + platform);
+            if (isNowOpen && badge && badge.querySelector('.msg-badge-connected')) {
+                showPairingBox(platform, '');
+            }
         }
 
         function msgConnect(platform) {
@@ -401,6 +465,9 @@
 
                         tokenEl.value = '';
                         btnEl.innerHTML = '<i class="fas fa-plug"></i> Connect';
+
+                        // Show pairing box
+                        showPairingBox(platform, data.bot_name);
                     } else {
                         feedback.className = 'msg-feedback error';
                         feedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (data.error || 'Connection failed');
@@ -412,6 +479,78 @@
                     btnEl.innerHTML = '<i class="fas fa-plug"></i> Connect';
                     feedback.className = 'msg-feedback error';
                     feedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> Network error — please try again.';
+                });
+        }
+
+        function showPairingBox(platform, botName) {
+            var body = document.getElementById('body-' + platform);
+            var existing = document.getElementById('pairing-box-' + platform);
+            if (existing) return; // already shown
+
+            var platformLabel = platform.charAt(0).toUpperCase() + platform.slice(1);
+            var html = '<div class="pairing-box" id="pairing-box-' + platform + '">'
+                + '<h4><i class="fas fa-key"></i> Step 2 — Pair yourself with the bot</h4>'
+                + '<div class="pairing-steps">'
+                + '1. Open ' + platformLabel + ' and send any message to <strong>' + botName + '</strong><br>'
+                + '2. The bot will reply with: <code>Here\'s your pairing code: XXXXXXXX</code><br>'
+                + '3. Enter that code below to authorize yourself'
+                + '</div>'
+                + '<div class="pairing-input-row">'
+                + '<input type="text" id="pair-code-' + platform + '" maxlength="12" placeholder="e.g. 97JQLXQK" oninput="this.value=this.value.toUpperCase()">'
+                + '<button type="button" class="btn-pair" id="btn-pair-' + platform + '" onclick="approvePairing(\'' + platform + '\')">'
+                + '<i class="fas fa-check"></i> Approve</button>'
+                + '</div>'
+                + '<div id="pair-feedback-' + platform + '" style="display:none;" class="pair-feedback"></div>'
+                + '</div>';
+
+            body.insertAdjacentHTML('beforeend', html);
+        }
+
+        function approvePairing(platform) {
+            var codeEl    = document.getElementById('pair-code-' + platform);
+            var btnEl     = document.getElementById('btn-pair-' + platform);
+            var feedback  = document.getElementById('pair-feedback-' + platform);
+            var code      = codeEl.value.trim().toUpperCase();
+
+            if (!code) { codeEl.focus(); return; }
+
+            btnEl.disabled = true;
+            btnEl.innerHTML = '<span class="msg-spinner" style="border-color:#fff;border-top-color:transparent;"></span> Approving...';
+            feedback.className = 'pair-feedback working';
+            feedback.innerHTML = '<span class="msg-spinner"></span> Running pairing approval inside your agent...';
+            feedback.style.display = 'flex';
+
+            var fd = new FormData();
+            fd.append('action', 'approve_pairing');
+            fd.append('serviceId', _msgServiceId);
+            fd.append('platform', platform);
+            fd.append('code', code);
+
+            fetch(_msgAjaxUrl, { method: 'POST', body: fd })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    btnEl.disabled = false;
+                    btnEl.innerHTML = '<i class="fas fa-check"></i> Approve';
+                    if (data.success) {
+                        feedback.className = 'pair-feedback success';
+                        feedback.innerHTML = '<i class="fas fa-check-circle"></i> Paired! You can now chat with your agent on '
+                            + platform.charAt(0).toUpperCase() + platform.slice(1) + '.';
+                        codeEl.value = '';
+                        // Hide pairing box after 4s
+                        setTimeout(function() {
+                            var box = document.getElementById('pairing-box-' + platform);
+                            if (box) box.style.display = 'none';
+                        }, 4000);
+                    } else {
+                        feedback.className = 'pair-feedback error';
+                        feedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> ' + (data.error || 'Pairing failed');
+                    }
+                })
+                .catch(function() {
+                    btnEl.disabled = false;
+                    btnEl.innerHTML = '<i class="fas fa-check"></i> Approve';
+                    feedback.className = 'pair-feedback error';
+                    feedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> Network error — try again.';
                 });
         }
 

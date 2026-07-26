@@ -188,6 +188,32 @@ if ($action === 'remove_domain') {
     exit;
 }
 
+if ($action === 'approve_pairing') {
+    $platform = trim($_POST['platform'] ?? 'telegram');
+    $code     = preg_replace('/[^A-Z0-9]/i', '', strtoupper(trim($_POST['code'] ?? '')));
+
+    if (empty($code)) {
+        echo json_encode(['success' => false, 'error' => 'Pairing code is required']); exit;
+    }
+
+    $platformArg = strtolower($platform);
+
+    try {
+        $ssh = hermesagent_get_ssh_client($serverParams, 20);
+        $cmd = "docker exec hermes-{$serviceId} hermes pairing approve {$platformArg} {$code} 2>&1 && echo 'PAIR_OK' || echo 'PAIR_FAIL'";
+        $result = trim($ssh->exec($cmd));
+
+        if (strpos($result, 'PAIR_OK') !== false || stripos($result, 'approved') !== false || stripos($result, 'success') !== false) {
+            echo json_encode(['success' => true, 'output' => $result]);
+        } else {
+            echo json_encode(['success' => false, 'error' => 'Pairing failed — check the code and try again.', 'output' => $result]);
+        }
+    } catch (\Exception $e) {
+        echo json_encode(['success' => false, 'error' => 'SSH error: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
 if ($action === 'connect_messaging') {
     $platform = trim($_POST['platform'] ?? '');
     $token    = trim($_POST['token'] ?? '');
