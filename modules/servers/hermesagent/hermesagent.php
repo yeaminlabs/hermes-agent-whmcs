@@ -1708,6 +1708,7 @@ function hermesagent_manage_llm($params) {
         'custom_key' => '',
         'telegram_token' => '',
         'discord_token' => '',
+        'slack_token' => '',
         'serviceid' => $serviceid,
         'success' => isset($_GET['success']) ? true : false,
         'error' => '',
@@ -1735,6 +1736,7 @@ function hermesagent_manage_llm($params) {
                     if ($key === 'OPENAI_API_BASE') $vars['custom_url'] = $val;
                     if ($key === 'TELEGRAM_BOT_TOKEN') $vars['telegram_token'] = $val;
                     if ($key === 'DISCORD_BOT_TOKEN') $vars['discord_token'] = $val;
+                    if ($key === 'SLACK_BOT_TOKEN') $vars['slack_token'] = $val;
                 }
             }
         }

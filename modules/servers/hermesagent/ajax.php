@@ -188,4 +188,115 @@ if ($action === 'remove_domain') {
     exit;
 }
 
+if ($action === 'connect_messaging') {
+    $platform = trim($_POST['platform'] ?? '');
+    $token    = trim($_POST['token'] ?? '');
+
+    $envKeys = [
+        'telegram' => 'TELEGRAM_BOT_TOKEN',
+        'discord'  => 'DISCORD_BOT_TOKEN',
+        'slack'    => 'SLACK_BOT_TOKEN',
+    ];
+
+    if (!isset($envKeys[$platform])) {
+        echo json_encode(['success' => false, 'error' => 'Invalid platform']); exit;
+    }
+    if ($token === '') {
+        echo json_encode(['success' => false, 'error' => 'Token is required']); exit;
+    }
+
+    // Step 1: Validate token against the platform API
+    $botName = '';
+    if ($platform === 'telegram') {
+        $ch = curl_init("https://api.telegram.org/bot{$token}/getMe");
+        curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $data = json_decode($resp, true);
+        if ($code !== 200 || empty($data['ok'])) {
+            echo json_encode(['success' => false, 'error' => 'Invalid Telegram token — Telegram API rejected it.']); exit;
+        }
+        $botName = '@' . ($data['result']['username'] ?? 'Unknown');
+    } elseif ($platform === 'discord') {
+        $ch = curl_init("https://discord.com/api/v10/users/@me");
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => ["Authorization: Bot {$token}"],
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $data = json_decode($resp, true);
+        if ($code !== 200 || empty($data['id'])) {
+            echo json_encode(['success' => false, 'error' => 'Invalid Discord token — authentication failed.']); exit;
+        }
+        $botName = ($data['username'] ?? 'Unknown') . '#' . ($data['discriminator'] ?? '0');
+    } elseif ($platform === 'slack') {
+        $ch = curl_init("https://slack.com/api/auth.test");
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 10,
+            CURLOPT_HTTPHEADER => ["Authorization: Bearer {$token}"],
+        ]);
+        $resp = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        $data = json_decode($resp, true);
+        if ($code !== 200 || empty($data['ok'])) {
+            echo json_encode(['success' => false, 'error' => 'Invalid Slack token — authentication failed.']); exit;
+        }
+        $botName = $data['user'] ?? $data['bot_id'] ?? 'Slack Bot';
+    }
+
+    // Step 2: SSH into container and inject token
+    $envKey  = $envKeys[$platform];
+    $dataDir = "/srv/hermes/{$serviceId}/data";
+    $safeToken = escapeshellarg($token);
+
+    try {
+        $ssh = hermesagent_get_ssh_client($serverParams, 20);
+        $cmd  = "sed -i '/^{$envKey}=/d' \"{$dataDir}/.env\"\n";
+        $cmd .= "echo \"{$envKey}={$safeToken}\" >> \"{$dataDir}/.env\"\n";
+        $cmd .= "docker restart \"hermes-{$serviceId}\" >/dev/null 2>&1 && echo 'RESTARTED' || echo 'RESTART_FAILED'\n";
+        $result = trim($ssh->exec($cmd));
+
+        if (strpos($result, 'RESTARTED') === false) {
+            echo json_encode(['success' => false, 'error' => 'Token validated but container restart failed.']); exit;
+        }
+    } catch (\Exception $e) {
+        echo json_encode(['success' => false, 'error' => 'SSH error: ' . $e->getMessage()]); exit;
+    }
+
+    echo json_encode(['success' => true, 'bot_name' => $botName, 'platform' => $platform]);
+    exit;
+}
+
+if ($action === 'disconnect_messaging') {
+    $platform = trim($_POST['platform'] ?? '');
+    $envKeys  = ['telegram' => 'TELEGRAM_BOT_TOKEN', 'discord' => 'DISCORD_BOT_TOKEN', 'slack' => 'SLACK_BOT_TOKEN'];
+
+    if (!isset($envKeys[$platform])) {
+        echo json_encode(['success' => false, 'error' => 'Invalid platform']); exit;
+    }
+
+    $envKey  = $envKeys[$platform];
+    $dataDir = "/srv/hermes/{$serviceId}/data";
+
+    try {
+        $ssh = hermesagent_get_ssh_client($serverParams, 20);
+        $cmd  = "sed -i '/^{$envKey}=/d' \"{$dataDir}/.env\"\n";
+        $cmd .= "docker restart \"hermes-{$serviceId}\" >/dev/null 2>&1 && echo 'RESTARTED' || echo 'RESTART_FAILED'\n";
+        $result = trim($ssh->exec($cmd));
+
+        if (strpos($result, 'RESTARTED') === false) {
+            echo json_encode(['success' => false, 'error' => 'Container restart failed.']); exit;
+        }
+    } catch (\Exception $e) {
+        echo json_encode(['success' => false, 'error' => 'SSH error: ' . $e->getMessage()]); exit;
+    }
+
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 echo json_encode(['success' => false, 'error' => 'Unknown action']);
