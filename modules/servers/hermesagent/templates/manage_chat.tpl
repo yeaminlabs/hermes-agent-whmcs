@@ -248,7 +248,7 @@
 (function () {
     var SVC_ID     = {$serviceid};
     var AJAX       = 'modules/servers/hermesagent/ajax.php';
-    var AGENT_NAME = {$agent_name|json_encode};
+    var AGENT_NAME = "{$agent_name|escape:'javascript'}";
 
     var msgsEl  = document.getElementById('hchat-msgs');
     var inputEl = document.getElementById('hchat-input');
