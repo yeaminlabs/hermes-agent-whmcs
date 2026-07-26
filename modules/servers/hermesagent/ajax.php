@@ -504,4 +504,50 @@ PYEOF;
     exit;
 }
 
+if ($action === 'terminal_exec') {
+    $rawCmd = trim($_POST['command'] ?? '');
+
+    if ($rawCmd === '') {
+        echo json_encode(['success' => true, 'output' => '', 'exit_code' => 0]); exit;
+    }
+
+    if (strlen($rawCmd) > 2000) {
+        echo json_encode(['success' => false, 'error' => 'Command too long (max 2000 chars)']); exit;
+    }
+
+    // Per-service rate limit: max 2 commands/second
+    $rateKey = 'herm_term_' . $serviceId;
+    $now = microtime(true);
+    if (isset($_SESSION[$rateKey]) && ($now - $_SESSION[$rateKey]) < 0.5) {
+        echo json_encode(['success' => false, 'error' => 'Slow down — too many commands']); exit;
+    }
+    $_SESSION[$rateKey] = $now;
+
+    $container = "hermes-{$serviceId}";
+
+    try {
+        $ssh = hermesagent_get_ssh_client($serverParams, 35);
+
+        // Ensure container is running before exec
+        $state = trim($ssh->exec("docker inspect --format='{{.State.Running}}' {$container} 2>/dev/null || echo notfound"));
+        if ($state !== 'true') {
+            echo json_encode(['success' => false, 'error' => 'Container is not running. Start it first.']); exit;
+        }
+
+        $escaped = escapeshellarg($rawCmd);
+        $raw = $ssh->exec("timeout 30 docker exec {$container} bash -c {$escaped} 2>&1; echo \"__EC:\$?\"");
+
+        $exitCode = 0;
+        if (preg_match('/\n?__EC:(\d+)$/', $raw, $m)) {
+            $exitCode = (int)$m[1];
+            $raw = substr($raw, 0, -strlen($m[0]));
+        }
+
+        echo json_encode(['success' => true, 'output' => $raw, 'exit_code' => $exitCode]);
+    } catch (\Exception $e) {
+        echo json_encode(['success' => false, 'error' => 'SSH error: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
 echo json_encode(['success' => false, 'error' => 'Unknown action']);

@@ -1510,6 +1510,7 @@ function hermesagent_ClientAreaCustomButtonArray() {
     return [
         'Manage LLM Providers' => 'manage_llm',
         'MCP Servers' => 'manage_mcp',
+        'Terminal' => 'manage_terminal',
         'Restart Agent' => 'restart',
         'View Logs' => 'viewlogs',
         'Regenerate Password' => 'regenpassword',
@@ -1877,6 +1878,17 @@ function hermesagent_manage_mcp($params) {
             'installed'        => $installed,
             'error'            => $error,
             'deployment_status'=> $params['status'],
+        ]
+    ];
+}
+
+function hermesagent_manage_terminal($params) {
+    $serviceid = intval($params['serviceid']);
+    return [
+        'templatefile' => 'templates/manage_terminal',
+        'vars' => [
+            'serviceid'         => $serviceid,
+            'deployment_status' => $params['status'],
         ]
     ];
 }
