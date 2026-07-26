@@ -404,6 +404,9 @@
                 <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=manage_llm" class="hermes-btn-primary">
                     <i class="fas fa-microchip"></i> Manage LLMs
                 </a>
+                <a href="clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=manage_mcp" class="hermes-btn-primary">
+                    <i class="fas fa-puzzle-piece"></i> MCP Servers
+                </a>
             {elseif $deployment_status eq 'Suspended'}
                 <span class="status-badge status-suspended">
                     Suspended
