@@ -240,9 +240,28 @@ function hermesagent_generate_random_password($length = 16) {
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * Get LiteLLM gateway URL and master key from product config.
+ * Get LiteLLM gateway URL and master key.
+ *
+ * Prefers the actively-managed Brain (mod_hermesagent_brain_config, edited from
+ * the admin Brain Management panel) since that's the single source of truth
+ * CreateAccount itself uses to provision customer keys. Product Module Setting
+ * config options (configoption11-13) are only a fallback for installs that
+ * never set up Brain Management — without this, the two sources can silently
+ * disagree (e.g. an empty product field) and break usage tracking even though
+ * provisioning, which only reads the Brain, works fine.
  */
 function hermesagent_litellm_config($params) {
+    if (function_exists('hermesagent_get_active_brain')) {
+        $brain = hermesagent_get_active_brain();
+        if (!empty($brain['base_url']) && !empty($brain['api_key'])) {
+            return [
+                'url'   => rtrim(preg_replace('|/v1/?$|', '', rtrim($brain['base_url'], '/')), '/'),
+                'key'   => $brain['api_key'],
+                'model' => $brain['model_name'] ?? 'zai.glm-5',
+            ];
+        }
+    }
+
     $url = hermesagent_resolve_param($params, 'configoption11', 'LiteLLM Gateway URL', 'https://ai-proxy.snbdhost.com');
     $key = hermesagent_resolve_param($params, 'configoption12', 'LiteLLM Master Key', 'sk-snbdhost-master-key-2026');
     $model = hermesagent_resolve_param($params, 'configoption13', 'Free Tier Default Model', 'zai.glm-5');
@@ -479,11 +498,15 @@ function hermesagent_resolve_param($params, $configKey, $name, $defaultVal = '')
         }
     }
     
-    // 3. Fallback to Admin Module Config Options
-    if (isset($params[$configKey])) {
+    // 3. Fallback to Admin Module Config Options — WHMCS always populates
+    // configoptionN slots even when the admin left the field blank, so an
+    // isset() check here would return '' instead of falling through to a
+    // sane default. Use empty() so a blank product Module Setting behaves
+    // the same as an unset one.
+    if (!empty($params[$configKey])) {
         return $params[$configKey];
     }
-    
+
     return $defaultVal;
 }
 
