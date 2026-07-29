@@ -831,7 +831,7 @@ tool_loop_guardrails:
     exact_failure: 5
     idempotent_no_progress: 5
 terminal:
-  backend: docker
+  backend: local
 YAML;
         } elseif ($llmProvider === 'custom') {
             $yamlContent = <<<YAML
@@ -849,7 +849,7 @@ tool_loop_guardrails:
     exact_failure: 5
     idempotent_no_progress: 5
 terminal:
-  backend: docker
+  backend: local
 YAML;
         } else {
             $yamlContent = <<<YAML
@@ -863,7 +863,7 @@ tool_loop_guardrails:
     exact_failure: 5
     idempotent_no_progress: 5
 terminal:
-  backend: docker
+  backend: local
 YAML;
         }
 
@@ -1168,6 +1168,13 @@ HTML;
         $setupCmds .= "    yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True)\n";
         $setupCmds .= "print('config patched')\n";
         $setupCmds .= "PYEOF\n";
+
+        // Hermes loads config.yaml at boot and does not hot-reload it, so the
+        // patched terminal backend ('local') must be picked up via restart —
+        // otherwise the container keeps running with whatever backend was
+        // baked into the config.yaml written before `docker run`.
+        $setupCmds .= "docker restart \"hermes-{$serviceid}\" >/dev/null\n";
+        $setupCmds .= "sleep 3\n";
 
         $setupCmds .= "docker exec \"hermes-{$serviceid}\" sh -c \"sed -i 's/<title>Hermes Agent - Dashboard<\\/title>/<title>{$agentName} — Powered by SNBD Host<\\/title>/g' /opt/hermes/hermes_cli/web_dist/index.html\"\n";
         

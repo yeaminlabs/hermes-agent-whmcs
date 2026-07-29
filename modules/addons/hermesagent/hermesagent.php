@@ -561,6 +561,67 @@ function hermesagent_output($vars) {
             . '<i class="fas fa-broadcast-tower"></i> Push complete: <strong>' . $nUp . ' updated</strong>'
             . ($nFail > 0 ? ', <strong>' . $nFail . ' failed</strong> (#' . implode(', #', $pushResults['failed']) . ')' : '')
             . '. Model: <code>' . htmlspecialchars($pushModel) . '</code></div>';
+    } elseif (isset($_POST['fix_terminal_backend'])) {
+        // One-off remediation: older CreateAccount runs booted containers with
+        // terminal.backend: docker (no Docker socket available inside the
+        // customer container, so every terminal() tool call fails). This
+        // forces every active instance's config.yaml to backend: local and
+        // restarts the container so the fix actually takes effect.
+        $instances = Capsule::table('mod_hermesagent_instances')
+            ->join('tblhosting', 'mod_hermesagent_instances.serviceid', '=', 'tblhosting.id')
+            ->where('mod_hermesagent_instances.status', 'Active')
+            ->select('mod_hermesagent_instances.serviceid', 'tblhosting.server as serverid')
+            ->get();
+
+        $fixResults = ['updated' => [], 'failed' => []];
+
+        $byServer = [];
+        foreach ($instances as $inst) {
+            $byServer[$inst->serverid][] = $inst->serviceid;
+        }
+
+        foreach ($byServer as $serverid => $serviceids) {
+            $serverRecord = Capsule::table('tblservers')->where('id', $serverid)->first();
+            if (!$serverRecord) {
+                foreach ($serviceids as $sid) $fixResults['failed'][] = $sid;
+                continue;
+            }
+            try {
+                $ssh = hermesagent_addon_ssh_connect($serverRecord, 90);
+                $cmds = '';
+                foreach ($serviceids as $sid) {
+                    $dataDir = "/srv/hermes/{$sid}/data";
+                    $cmds .= "python3 - << 'PYEOF_FIXTERM'\n";
+                    $cmds .= "import yaml\n";
+                    $cmds .= "p = '{$dataDir}/config.yaml'\n";
+                    $cmds .= "try:\n";
+                    $cmds .= "    with open(p) as f: cfg = yaml.safe_load(f) or {}\n";
+                    $cmds .= "except: cfg = {}\n";
+                    $cmds .= "cfg['terminal'] = {'backend': 'local', 'timeout': 180, 'cwd': '/opt/data'}\n";
+                    $cmds .= "with open(p, 'w') as f: yaml.dump(cfg, f, default_flow_style=False, allow_unicode=True)\n";
+                    $cmds .= "PYEOF_FIXTERM\n";
+                    $cmds .= "docker restart hermes-{$sid} >/dev/null 2>&1 && echo 'FIXED_{$sid}' || echo 'FIX_FAILED_{$sid}'\n";
+                }
+                $output = $ssh->exec($cmds);
+                foreach ($serviceids as $sid) {
+                    if (strpos($output, "FIXED_{$sid}") !== false) {
+                        $fixResults['updated'][] = $sid;
+                    } else {
+                        $fixResults['failed'][] = $sid;
+                    }
+                }
+            } catch (\Exception $e) {
+                foreach ($serviceids as $sid) $fixResults['failed'][] = $sid;
+                logModuleCall('hermesagent_addon', 'FixTerminalBackend_SSH_Failed', $serverid, $e->getMessage());
+            }
+        }
+
+        $nUp = count($fixResults['updated']);
+        $nFail = count($fixResults['failed']);
+        $brainMessage = '<div class="alert alert-' . ($nFail === 0 ? 'success' : 'warning') . '" style="padding:12px 16px;border-radius:6px;margin-bottom:15px;font-weight:600;">'
+            . '<i class="fas fa-terminal"></i> Terminal backend fix complete: <strong>' . $nUp . ' fixed</strong>'
+            . ($nFail > 0 ? ', <strong>' . $nFail . ' failed</strong> (#' . implode(', #', $fixResults['failed']) . ')' : '')
+            . '.</div>';
     }
 
     // 0. Ensure quiz leads table exists (safe to run on every page load)
@@ -957,6 +1018,11 @@ function hermesagent_output($vars) {
                     <form method="post" style="margin:0;" onsubmit="return confirm('Push active brain to ALL running containers and restart them?')">
                         <button type="submit" name="push_brain" style="background:linear-gradient(135deg,#f6c23e,#d4a017);border:none;color:#fff;padding:7px 14px;font-weight:600;border-radius:6px;cursor:pointer;font-size:13px;">
                             <i class="fas fa-broadcast-tower"></i> Push to All
+                        </button>
+                    </form>
+                    <form method="post" style="margin:0;" onsubmit="return confirm('Force terminal.backend to local on ALL active containers and restart them? This fixes agents that cannot run terminal commands.')">
+                        <button type="submit" name="fix_terminal_backend" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);border:none;color:#fff;padding:7px 14px;font-weight:600;border-radius:6px;cursor:pointer;font-size:13px;">
+                            <i class="fas fa-terminal"></i> Fix Terminal Backend (All)
                         </button>
                     </form>
                 </div>

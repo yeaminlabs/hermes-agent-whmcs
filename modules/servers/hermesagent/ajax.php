@@ -380,10 +380,10 @@ if ($action === 'install_mcp') {
     $dataDir = "/srv/hermes/{$serviceId}/data";
     $dir     = $cfg['install_dir'];
 
-    // Collect env vars from POST
+    // Collect env vars from POST — WHMCS init.php HTML-encodes POST values
     $envVars = [];
     foreach (($cfg['fields'] ?? []) as $field) {
-        $val = trim($_POST[$field] ?? '');
+        $val = html_entity_decode(trim($_POST[$field] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         if ($val === '') {
             echo json_encode(['success' => false, 'error' => "Field {$field} is required"]); exit;
         }
@@ -403,14 +403,16 @@ if ($action === 'install_mcp') {
             }
         }
 
-        // Patch config.yaml via Python inside the container
-        $envJson = json_encode($envVars);
+        // Patch config.yaml via Python inside the container.
+        // JSON_UNESCAPED_SLASHES is critical: default json_encode turns "/" into "\/",
+        // and Python keeps the unknown "\/" escape literally, corrupting paths/URLs.
+        $envJson = json_encode($envVars, JSON_UNESCAPED_SLASHES);
 
         if (!empty($cfg['command'])) {
             // stdio MCP server
             $command = str_replace('{dir}', $dir, $cfg['command']);
             $args    = array_map(fn($a) => str_replace('{dir}', $dir, $a), $cfg['args'] ?? []);
-            $argsJson = json_encode($args);
+            $argsJson = json_encode($args, JSON_UNESCAPED_SLASHES);
 
             $pyScript = <<<PYEOF
 import yaml, json, sys
@@ -524,8 +526,10 @@ if ($action === 'chat_proxy') {
     if (empty($clean)) { echo json_encode(['success' => false, 'error' => 'Empty message list']); exit; }
     if (count($clean) > 100) { echo json_encode(['success' => false, 'error' => 'Too many messages']); exit; }
 
-    $apiUrl = "http://{$server->ipaddress}:{$instance->api_port}/v1/chat/completions";
-    $apiKey = $instance->api_key;
+    // api_port is only accessible from localhost on the Hermes server —
+    // run curl via SSH so we hit 127.0.0.1 instead of a blocked external port
+    $apiPort = $instance->api_port;
+    $apiKey  = $instance->api_key;
 
     $payload = json_encode([
         'model'       => 'mistral.ministral-3-14b-instruct',
@@ -534,32 +538,34 @@ if ($action === 'chat_proxy') {
         'stream'      => false,
     ]);
 
-    $ch = curl_init($apiUrl);
-    curl_setopt_array($ch, [
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 60,
-        CURLOPT_POST           => true,
-        CURLOPT_POSTFIELDS     => $payload,
-        CURLOPT_HTTPHEADER     => [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $apiKey,
-        ],
-    ]);
-    $resp = curl_exec($ch);
-    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    $err  = curl_error($ch);
-    curl_close($ch);
-
-    if ($err) {
-        echo json_encode(['success' => false, 'error' => 'Could not reach agent: ' . $err]); exit;
-    }
-    if ($code !== 200) {
-        $detail = json_decode($resp, true);
-        $msg = $detail['error']['message'] ?? $detail['message'] ?? "HTTP {$code}";
-        echo json_encode(['success' => false, 'error' => "Agent API error: {$msg}"]); exit;
+    try {
+        $ssh = hermesagent_get_ssh_client($serverParams, 65);
+        $escapedPayload = escapeshellarg($payload);
+        $curlCmd = "curl -s --max-time 60 -X POST 'http://127.0.0.1:{$apiPort}/v1/chat/completions'"
+                 . " -H 'Content-Type: application/json'"
+                 . " -H 'Authorization: Bearer {$apiKey}'"
+                 . " -d {$escapedPayload}";
+        $resp = $ssh->exec($curlCmd);
+    } catch (\Exception $e) {
+        echo json_encode(['success' => false, 'error' => 'SSH error: ' . $e->getMessage()]); exit;
     }
 
-    $data = json_decode($resp, true);
+    if (empty(trim($resp))) {
+        echo json_encode(['success' => false, 'error' => 'Agent returned empty response — is the API server running?']); exit;
+    }
+
+    $data  = json_decode($resp, true);
+    $reply = '';
+
+    if (!$data || !isset($data['choices'])) {
+        // May be an error JSON from the agent
+        $apiErr = $data['error']['message'] ?? $data['message'] ?? null;
+        if ($apiErr) {
+            echo json_encode(['success' => false, 'error' => 'Agent API error: ' . $apiErr]); exit;
+        }
+        echo json_encode(['success' => false, 'error' => 'Unexpected agent response: ' . substr($resp, 0, 200)]); exit;
+    }
+
     $reply = $data['choices'][0]['message']['content'] ?? '';
     echo json_encode([
         'success' => true,
