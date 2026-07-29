@@ -719,6 +719,7 @@ function hermesagent_output($vars) {
                 $status = curl_multi_exec($mh, $running);
                 if ($running) curl_multi_select($mh, 0.5);
             } while ($running && $status === CURLM_OK);
+            $needsLogsFallback = [];
             foreach ($handles as $sid => $ch) {
                 $resp = curl_multi_getcontent($ch);
                 $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -739,8 +740,67 @@ function hermesagent_output($vars) {
                         ];
                     }
                 }
+                // /key/info is budget/spend metadata on most LiteLLM versions and often
+                // doesn't carry per-key token counts — fall back to /spend/logs for any
+                // key that came back with nothing.
+                if (empty($usageMap[$sid]) || (!$usageMap[$sid]['total_tokens'] && !$usageMap[$sid]['spend'])) {
+                    $needsLogsFallback[$sid] = true;
+                }
             }
             curl_multi_close($mh);
+
+            if (!empty($needsLogsFallback)) {
+                $keyBySid = [];
+                foreach ($keyed as $row) {
+                    if (isset($needsLogsFallback[(int)$row->serviceid])) {
+                        $keyBySid[(int)$row->serviceid] = $row->litellm_key_value;
+                    }
+                }
+                $mh2 = curl_multi_init();
+                $handles2 = [];
+                foreach ($keyBySid as $sid => $keyVal) {
+                    $ch = curl_init($litellmApiUrl . '/spend/logs?api_key=' . urlencode($keyVal));
+                    curl_setopt_array($ch, [
+                        CURLOPT_HTTPHEADER     => ['Authorization: Bearer ' . $masterKey],
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_TIMEOUT        => 6,
+                        CURLOPT_CONNECTTIMEOUT => 3,
+                        CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+                    ]);
+                    curl_multi_add_handle($mh2, $ch);
+                    $handles2[$sid] = $ch;
+                }
+                do {
+                    $status2 = curl_multi_exec($mh2, $running2);
+                    if ($running2) curl_multi_select($mh2, 0.5);
+                } while ($running2 && $status2 === CURLM_OK);
+                foreach ($handles2 as $sid => $ch) {
+                    $resp = curl_multi_getcontent($ch);
+                    $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_multi_remove_handle($mh2, $ch);
+                    curl_close($ch);
+                    if ($code === 200 && $resp) {
+                        $logs = json_decode($resp, true);
+                        if (is_array($logs)) {
+                            $pt = 0; $ct = 0; $spend = 0.0;
+                            foreach ($logs as $entry) {
+                                $pt    += (int)($entry['prompt_tokens'] ?? 0);
+                                $ct    += (int)($entry['completion_tokens'] ?? 0);
+                                $spend += (float)($entry['spend'] ?? 0);
+                            }
+                            if ($pt || $ct || $spend) {
+                                $usageMap[$sid] = [
+                                    'total_tokens'      => $pt + $ct,
+                                    'prompt_tokens'     => $pt,
+                                    'completion_tokens' => $ct,
+                                    'spend'             => $spend,
+                                ];
+                            }
+                        }
+                    }
+                }
+                curl_multi_close($mh2);
+            }
         }
     } catch (\Exception $e) { /* LiteLLM unreachable — skip */ }
 
@@ -1238,7 +1298,14 @@ function hermesagent_output($vars) {
                                             <span style="font-size:11px;color:#ccc;">—</span>
                                             <?php endif; ?>
                                         </td>
-                                        <td><span class="ha-badge <?php echo $statusClass; ?>"><?php echo $d->status; ?></span></td>
+                                        <td>
+                                            <span class="ha-badge <?php echo $statusClass; ?>"><?php echo $d->status; ?></span>
+                                            <?php if (empty($d->litellm_key_id)): ?>
+                                            <br><span class="ha-badge" style="background:#dc3545;color:#fff;font-size:9px;margin-top:4px;display:inline-block;" title="No per-customer LiteLLM key on record — this instance is running on the shared master key. Usage/tokens are NOT tracked and NOT billable for this customer until a redeploy successfully generates one.">
+                                                <i class="fas fa-exclamation-triangle"></i> MASTER KEY
+                                            </span>
+                                            <?php endif; ?>
+                                        </td>
                                     </tr>
                                 <?php endforeach; ?>
                             </tbody>
