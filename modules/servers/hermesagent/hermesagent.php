@@ -377,23 +377,67 @@ function hermesagent_litellm_get_usage($gatewayUrl, $masterKey, $keyValue) {
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    if ($httpCode !== 200 || empty($response)) return null;
+    $promptTokens = 0;
+    $completionTokens = 0;
+    $totalTokens = 0;
+    $spend = 0.0;
+    $model = '';
 
-    $data = json_decode($response, true);
-    if (!$data || !isset($data['info'])) return null;
+    if ($httpCode === 200 && !empty($response)) {
+        $data = json_decode($response, true);
+        if ($data && isset($data['info'])) {
+            $info = $data['info'];
+            $totalTokens      = (int) ($info['total_tokens'] ?? 0);
+            $promptTokens     = (int) ($info['prompt_tokens'] ?? 0);
+            $completionTokens = (int) ($info['completion_tokens'] ?? 0);
+            $spend            = (float) ($info['spend'] ?? 0);
+            $model            = $info['models'][0] ?? '';
+        }
+    }
 
-    $info = $data['info'];
-    $totalTokens = ($info['total_tokens'] ?? 0) + 0;
-    $promptTokens = $info['prompt_tokens'] ?? 0;
-    $completionTokens = $info['completion_tokens'] ?? 0;
-    if ($totalTokens === 0) $totalTokens = $promptTokens + $completionTokens;
+    // /key/info does not reliably return per-key token counts on all LiteLLM
+    // versions (it's primarily budget/spend metadata) — fall back to summing
+    // /spend/logs for this key, which always carries prompt/completion tokens
+    // per request.
+    if ($totalTokens === 0 && $promptTokens === 0 && $completionTokens === 0) {
+        $ch2 = curl_init($gatewayUrl . '/spend/logs?api_key=' . urlencode($keyValue));
+        curl_setopt_array($ch2, [
+            CURLOPT_HTTPHEADER     => [
+                'Authorization: Bearer ' . $masterKey,
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT        => 8,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_IPRESOLVE      => CURL_IPRESOLVE_V4,
+        ]);
+        $logsResponse = curl_exec($ch2);
+        $logsHttpCode = curl_getinfo($ch2, CURLINFO_HTTP_CODE);
+        curl_close($ch2);
+
+        if ($logsHttpCode === 200 && !empty($logsResponse)) {
+            $logs = json_decode($logsResponse, true);
+            if (is_array($logs)) {
+                foreach ($logs as $entry) {
+                    $promptTokens     += (int) ($entry['prompt_tokens'] ?? 0);
+                    $completionTokens += (int) ($entry['completion_tokens'] ?? 0);
+                    $spend            += (float) ($entry['spend'] ?? 0);
+                    if (empty($model)) $model = $entry['model'] ?? '';
+                }
+                $totalTokens = $promptTokens + $completionTokens;
+            }
+        }
+    }
+
+    if ($totalTokens === 0 && $promptTokens === 0 && $completionTokens === 0 && $httpCode !== 200) {
+        return null;
+    }
 
     return [
         'total_tokens'      => (int) $totalTokens,
         'prompt_tokens'     => (int) $promptTokens,
         'completion_tokens' => (int) $completionTokens,
-        'spend'             => (float) ($info['spend'] ?? 0),
-        'model'             => $info['models'][0] ?? '',
+        'spend'             => (float) $spend,
+        'model'             => $model,
     ];
 }
 
@@ -794,11 +838,17 @@ function hermesagent_CreateAccount($params) {
             . "1. Write it to /opt/data/artifacts/ using write_file (e.g. /opt/data/artifacts/index.html)\n"
             . "2. Tell the user the live URL: {$artifactsUrl}/index.html\n\n"
             . "You can confirm it is live: terminal(command=\"curl -s http://localhost:3000/artifacts/ | head -5\")\n\n"
-            . "# HANDLING ZIP / ARCHIVE FILES\n"
+            . "# HANDLING ZIP / ARCHIVE / BINARY FILES\n"
             . "The 'unzip' binary is NOT installed and you cannot apt/apk install anything. "
             . "NEVER attempt to install packages. Instead extract archives with Python, which is always available:\n"
             . "  terminal(command=\"python3 -m zipfile -e /opt/data/upload.zip /opt/data/artifacts/\")\n"
-            . "For tar archives: terminal(command=\"python3 -c \\\"import tarfile; tarfile.open('/opt/data/upload.tar.gz').extractall('/opt/data/artifacts/')\\\"\")\n\n"
+            . "For tar archives: terminal(command=\"python3 -c \\\"import tarfile; tarfile.open('/opt/data/upload.tar.gz').extractall('/opt/data/artifacts/')\\\"\")\n"
+            . "- NEVER read_file, cat, or print the raw contents of a .zip/.tar/.gz/image/binary file — this dumps "
+            . "garbled binary data into your own context, burning huge amounts of tokens on every subsequent turn "
+            . "of the conversation. Only ever list archive contents with 'python3 -m zipfile -l file.zip' if you "
+            . "need to inspect them, never print the raw bytes.\n"
+            . "- If a task isn't working after 2-3 different approaches, STOP and tell the user what's blocking you "
+            . "instead of continuing to retry — repeated retries with growing tool output compound token usage fast.\n\n"
             . "# STRICT RULES\n"
             . "- NEVER say you cannot host — you CAN, the URL above is publicly accessible right now\n"
             . "- NEVER start any web server — one is already running on port 3000\n"
@@ -2037,14 +2087,14 @@ function hermesagent_ClientArea($params) {
     $completionTokens = 0;
     
     if ($record->status === 'Active') {
+        // 1. Fetch CPU and Mem Usage via SSH — independent of the LiteLLM usage
+        // fetch below so an SSH timeout can't blank out the token counter too.
         try {
             // Use a short 3-second timeout for ClientArea to prevent WHMCS hanging if server is down
             $ssh = hermesagent_get_ssh_client($params, 3);
-            
-            // 1. Fetch CPU and Mem Usage
             $statsCmd = "docker stats \"hermes-{$serviceid}\" --no-stream --format \"{{.CPUPerc}}|{{.MemUsage}}\" 2>/dev/null";
             $statsOutput = trim($ssh->exec($statsCmd));
-            
+
             if (!empty($statsOutput)) {
                 $parts = explode('|', $statsOutput);
                 if (count($parts) >= 2) {
@@ -2052,20 +2102,26 @@ function hermesagent_ClientArea($params) {
                     $mem = trim($parts[1]);
                 }
             }
-            
-            // 2. Fetch Token Usage from LiteLLM (authoritative — tracks every token at proxy level)
-            if (!empty($record->litellm_key_value)) {
+        } catch (\Exception $e) {
+            // Silently ignore SSH errors for stats so it doesn't break the client area
+            $cpu = 'Error';
+            $mem = 'Error';
+        }
+
+        // 2. Fetch Token Usage from LiteLLM (authoritative — tracks every token at proxy
+        // level) — HTTP call to the gateway, no SSH involved, so it must not be gated
+        // behind SSH success.
+        if (!empty($record->litellm_key_value)) {
+            try {
                 $ltCfg = hermesagent_litellm_config($params);
                 $usage = hermesagent_litellm_get_usage($ltCfg['url'], $ltCfg['key'], $record->litellm_key_value);
                 if ($usage) {
                     $promptTokens     = $usage['prompt_tokens'];
                     $completionTokens = $usage['completion_tokens'];
                 }
+            } catch (\Exception $e) {
+                logModuleCall('hermesagent', 'ClientArea_LiteLLM_Usage_Failed', $serviceid, $e->getMessage());
             }
-        } catch (\Exception $e) {
-            // Silently ignore SSH errors for stats so it doesn't break the client area
-            $cpu = 'Error';
-            $mem = 'Error';
         }
     }
     
