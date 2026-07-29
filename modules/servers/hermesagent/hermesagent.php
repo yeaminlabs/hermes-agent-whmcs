@@ -166,6 +166,15 @@ function hermesagent_setup_database() {
                     $table->integer('host_port')->default(0);
                 });
             }
+            if (!Capsule::schema()->hasColumn('mod_hermesagent_instances', 'custom_env')) {
+                // JSON map of env vars the customer set via self-service "Manage LLM
+                // Providers" (Telegram/Discord/Slack tokens, custom API keys). CreateAccount
+                // re-applies these on every redeploy so they never get silently wiped when
+                // .env is rebuilt from WHMCS configurable options.
+                Capsule::schema()->table('mod_hermesagent_instances', function ($table) {
+                    $table->text('custom_env')->nullable();
+                });
+            }
         }
     } catch (\Exception $e) {
         logActivity("HermesAgent database setup failed: " . $e->getMessage());
@@ -672,9 +681,14 @@ function hermesagent_CreateAccount($params) {
         Capsule::table('mod_hermesagent_instances')->insert($insertData);
     }
     
-    // Upgrade existing records: always ensure a fresh LiteLLM key from the new proxy on redeploy
+    // Existing records: only generate a LiteLLM key if this instance genuinely
+    // doesn't have one yet (e.g. first key-gen attempt failed and this redeploy
+    // is retrying it). NEVER rotate an existing key on redeploy — the customer's
+    // token usage, budget, and rate limits are tracked against that exact key
+    // value, and regenerating it on every Force Redeploy / ChangePackage
+    // orphans all historical usage and resets tracking to zero silently.
     $isFreeTier = ($llmProvider === 'free-tier' || $llmProvider === 'bedrock');
-    if ($isFreeTier && $record && !empty($litellmCfg['key'])) {
+    if ($isFreeTier && $record && empty($record->litellm_key_id) && !empty($litellmCfg['key'])) {
         try {
             $ltKey = hermesagent_litellm_create_key($litellmCfg['url'], $litellmCfg['key'], $serviceid, $litellmModel);
             Capsule::table('mod_hermesagent_instances')
@@ -686,7 +700,7 @@ function hermesagent_CreateAccount($params) {
                 ]);
             $record->litellm_key_id = $ltKey['key_id'];
             $record->litellm_key_value = $ltKey['key_value'];
-            logModuleCall('hermesagent', 'Redeploy_LiteLLM_Key', $serviceid, "LiteLLM key created for existing record: {$ltKey['key_id']}");
+            logModuleCall('hermesagent', 'Redeploy_LiteLLM_Key', $serviceid, "LiteLLM key created for existing record (had none): {$ltKey['key_id']}");
         } catch (\Exception $e) {
             logModuleCall('hermesagent', 'Redeploy_LiteLLM_Key_Failed', $serviceid, $e->getMessage());
         }
@@ -787,7 +801,26 @@ function hermesagent_CreateAccount($params) {
                 $envLines[] = "SLACK_BOT_TOKEN=" . $messagingToken;
             }
         }
-        
+
+        // Re-apply any self-service overrides (Telegram/Discord/Slack tokens, custom
+        // API keys) saved by the "Manage LLM Providers" client-area page. Without this,
+        // every redeploy rebuilds .env purely from WHMCS configurable options and
+        // silently wipes anything the customer configured after checkout.
+        if ($record && !empty($record->custom_env)) {
+            $customEnvOverrides = json_decode($record->custom_env, true);
+            if (is_array($customEnvOverrides)) {
+                foreach ($customEnvOverrides as $ceKey => $ceVal) {
+                    $ceKey = preg_replace('/[^A-Z0-9_]/', '', strtoupper($ceKey));
+                    if ($ceKey === '') continue;
+                    // Drop any line already set for this key so the override wins outright
+                    $envLines = array_values(array_filter($envLines, function ($line) use ($ceKey) {
+                        return strpos($line, $ceKey . '=') !== 0;
+                    }));
+                    $envLines[] = "{$ceKey}=" . $ceVal;
+                }
+            }
+        }
+
         $envContent = implode("\n", $envLines) . "\n";
         
         // Hosting subdomain for self-hosted projects
@@ -1862,7 +1895,8 @@ function hermesagent_update_llm($params) {
     if (!empty($_POST['nous_key'])) $keysToUpdate['NOUS_PORTAL_API_KEY'] = trim($_POST['nous_key']);
     if (!empty($_POST['telegram_token'])) $keysToUpdate['TELEGRAM_BOT_TOKEN'] = trim($_POST['telegram_token']);
     if (!empty($_POST['discord_token'])) $keysToUpdate['DISCORD_BOT_TOKEN'] = trim($_POST['discord_token']);
-    
+    if (!empty($_POST['slack_token'])) $keysToUpdate['SLACK_BOT_TOKEN'] = trim($_POST['slack_token']);
+
     if (!empty($_POST['custom_url'])) {
         $keysToUpdate['OPENAI_API_BASE'] = trim($_POST['custom_url']);
         if (!empty($_POST['custom_key'])) {
@@ -1885,7 +1919,7 @@ function hermesagent_update_llm($params) {
         
         // 2. Update .env for each key
         // We will remove existing occurrences of these keys, then append them
-        $allPossibleKeys = ['OPENROUTER_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'NOUS_PORTAL_API_KEY', 'OPENAI_API_BASE', 'TELEGRAM_BOT_TOKEN', 'DISCORD_BOT_TOKEN'];
+        $allPossibleKeys = ['OPENROUTER_API_KEY', 'OPENAI_API_KEY', 'ANTHROPIC_API_KEY', 'NOUS_PORTAL_API_KEY', 'OPENAI_API_BASE', 'TELEGRAM_BOT_TOKEN', 'DISCORD_BOT_TOKEN', 'SLACK_BOT_TOKEN'];
         foreach ($allPossibleKeys as $k) {
             $cmd .= "sed -i '/^{$k}=/d' \"{$dataDir}/.env\"\n";
         }
@@ -1894,13 +1928,33 @@ function hermesagent_update_llm($params) {
             $safeV = escapeshellarg($v);
             $cmd .= "echo \"{$k}={$safeV}\" >> \"{$dataDir}/.env\"\n";
         }
-        
+
         // 3. Restart container to apply
         $cmd .= "docker restart \"hermes-{$serviceid}\"\n";
-        
+
         $ssh->exec($cmd);
         logModuleCall('hermesagent', 'update_llm', $cmd, 'Success');
-        
+
+        // Persist these overrides so a future redeploy (Force Redeploy, ChangePackage,
+        // etc.) re-applies them instead of silently reverting to WHMCS configurable-option
+        // defaults and wiping out whatever the customer configured here.
+        if (!empty($keysToUpdate)) {
+            hermesagent_setup_database();
+            $existingRow = Capsule::table('mod_hermesagent_instances')->where('serviceid', $serviceid)->first();
+            $existingOverrides = [];
+            if ($existingRow && !empty($existingRow->custom_env)) {
+                $decoded = json_decode($existingRow->custom_env, true);
+                if (is_array($decoded)) $existingOverrides = $decoded;
+            }
+            $mergedOverrides = array_merge($existingOverrides, $keysToUpdate);
+            Capsule::table('mod_hermesagent_instances')
+                ->where('serviceid', $serviceid)
+                ->update([
+                    'custom_env' => json_encode($mergedOverrides),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]);
+        }
+
         header("Location: clientarea.php?action=productdetails&id={$serviceid}&modop=custom&a=manage_llm&success=1");
         exit;
         
